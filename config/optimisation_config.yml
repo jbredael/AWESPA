@@ -1,0 +1,39 @@
+# Example optimisation configuration
+# Configuration for AWE system optimisation
+
+# Optimisation algorithm settings
+algorithm:
+  type: "genetic_algorithm"     # Algorithm type: 'genetic_algorithm', 'particle_swarm', 'gradient_based'
+  max_iterations: 100           # Maximum number of iterations
+  population_size: 50           # Population size for evolutionary algorithms
+  convergence_tolerance: 1e-6   # Convergence tolerance
+  random_seed: 42               # Random seed for reproducibility
+
+# Design variables and constraints
+design_variables:
+  kite_area:                    # Kite wing area [m²]
+    min: 10.0
+    max: 100.0
+    initial: 25.0
+  tether_length:                # Tether length [m]
+    min: 100.0
+    max: 1000.0
+    initial: 300.0
+  flight_altitude:              # Operating altitude [m]
+    min: 50.0
+    max: 500.0
+    initial: 200.0
+
+# Objective function
+objectives:
+  primary: "maximize_aep"       # Primary objective: 'maximize_aep', 'minimize_lcoe'
+  constraints:
+    - "structural_limits"       # Enforce structural constraints
+    - "wind_limits"             # Enforce wind speed operational limits
+    - "regulatory_limits"       # Enforce regulatory constraints
+
+# Optimization settings
+settings:
+  use_surrogate_model: true     # Use surrogate models to speed up optimization
+  parallel_evaluations: 4       # Number of parallel function evaluations
+  save_intermediate: true       # Save intermediate results

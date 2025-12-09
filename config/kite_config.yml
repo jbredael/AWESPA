@@ -1,0 +1,35 @@
+# Example kite configuration
+# Physical and aerodynamic parameters for the kite system
+
+# Kite geometry
+geometry:
+  wing_area: 25.0               # Wing area [m²]
+  aspect_ratio: 5.0             # Wing aspect ratio [-]
+  wing_span: 11.18              # Wing span [m] (calculated from area and AR)
+  chord_length: 2.24            # Mean chord length [m]
+
+# Aerodynamic properties
+aerodynamics:
+  lift_coefficient_max: 1.5     # Maximum lift coefficient [-]
+  drag_coefficient_min: 0.03    # Minimum drag coefficient [-]
+  lift_to_drag_ratio: 15.0      # Maximum lift-to-drag ratio [-]
+  stall_angle: 15.0             # Stall angle [degrees]
+
+# Mass properties
+mass:
+  kite_mass: 15.0               # Kite mass [kg]
+  bridle_mass: 2.0              # Bridle system mass [kg]
+  total_mass: 17.0              # Total flying mass [kg]
+  
+# Control system
+control:
+  max_control_deflection: 25.0  # Maximum control surface deflection [degrees]
+  control_response_time: 0.1    # Control system response time [s]
+  autopilot_enabled: true       # Enable autopilot system
+
+# Operational limits
+limits:
+  max_wind_speed: 20.0          # Maximum operational wind speed [m/s]
+  min_wind_speed: 3.0           # Minimum operational wind speed [m/s]
+  max_line_tension: 5000.0      # Maximum allowable line tension [N]
+  safety_factor: 2.0            # Design safety factor [-]
