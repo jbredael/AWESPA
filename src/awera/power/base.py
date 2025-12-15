@@ -9,40 +9,34 @@ class PowerEstimationModel(ABC):
     """Abstract base class for power estimation models.
     
     All power estimation models must inherit from this class and implement
-    the required methods for loading configuration, computing power output,
-    and exporting power curves.
+    the required methods for loading configuration, computing power curves,
+    and exporting power data.
     """
     
     @abstractmethod
-    def load_from_yaml(self, config_path: Path) -> None:
-        """Load power model configuration parameters from a YAML file.
+    def load_configuration(self, config_dir: Path) -> None:
+        """Load power model configuration from YAML files.
         
-        :param config_path: Path to the YAML configuration file
-        :type config_path: Path
+        Expected configuration files in config_dir:
+        - airborne.yml: Kite mass, area, and aerodynamic properties
+        - ground_gen.yml: Generator and ground system properties
+        - tether.yml: Tether properties and constraints
+        - wind_resource.yml: Wind resource data and profiles
+        - operational_constraints.yml: Operational limits and bounds
+        
+        :param config_dir: Directory containing configuration YAML files
+        :type config_dir: Path
         """
         pass
     
     @abstractmethod
-    def compute_power(self, wind_profiles_path: Path, optimal_controls_path: Path, output_path: Path) -> None:
-        """Compute power output based on wind profiles and optimal controls.
+    def compute_power_curves(self, output_path: Path) -> None:
+        """Compute power curves for all wind profiles in wind resource.
         
-        :param wind_profiles_path: Path to wind profiles YAML file
-        :type wind_profiles_path: Path
-        :param optimal_controls_path: Path to optimal controls YAML file
-        :type optimal_controls_path: Path
+        This method should compute power output for each wind profile
+        cluster defined in the wind resource and generate power curves.
+        
         :param output_path: Path where power curve YAML will be written
-        :type output_path: Path
-        """
-        pass
-    
-    @abstractmethod
-    def export_to_yaml(self, output_path: Path) -> None:
-        """Export power curve to YAML format.
-        
-        The output YAML must contain the power curve data that
-        can be used for AEP calculations and analysis.
-        
-        :param output_path: Path where YAML file will be written
         :type output_path: Path
         """
         pass

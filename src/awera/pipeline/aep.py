@@ -5,11 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, Type
 
 from ..wind.base import WindProfileModel
-from ..optimisation.base import Optimiser
 from ..power.base import PowerEstimationModel
-from ..kite.base import KiteModel
-from ..control.base import ControlModel
-from ..groundstation.base import GroundStationModel
 
 
 class AEPCalculator:
@@ -30,11 +26,7 @@ class AEPCalculator:
         
         # Model instances will be created based on config
         self.wind_model: WindProfileModel = None
-        self.optimiser: Optimiser = None
         self.power_model: PowerEstimationModel = None
-        self.kite_model: KiteModel = None
-        self.control_model: ControlModel = None
-        self.groundstation_model: GroundStationModel = None
         
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file.
@@ -47,38 +39,17 @@ class AEPCalculator:
     
     def setup_models(self, 
                      wind_model_class: Type[WindProfileModel],
-                     optimiser_class: Type[Optimiser],
-                     power_model_class: Type[PowerEstimationModel],
-                     kite_model_class: Type[KiteModel] = None,
-                     control_model_class: Type[ControlModel] = None,
-                     groundstation_model_class: Type[GroundStationModel] = None) -> None:
+                     power_model_class: Type[PowerEstimationModel]) -> None:
         """Setup model instances based on provided classes.
         
         :param wind_model_class: Wind profile model class
         :type wind_model_class: Type[WindProfileModel]
-        :param optimiser_class: Optimiser class
-        :type optimiser_class: Type[Optimiser]
         :param power_model_class: Power estimation model class
         :type power_model_class: Type[PowerEstimationModel]
-        :param kite_model_class: Kite model class, defaults to None
-        :type kite_model_class: Type[KiteModel], optional
-        :param control_model_class: Control model class, defaults to None
-        :type control_model_class: Type[ControlModel], optional
-        :param groundstation_model_class: Ground station model class, defaults to None
-        :type groundstation_model_class: Type[GroundStationModel], optional
         """
-        # Initialize required models
+        # Initialize models
         self.wind_model = wind_model_class()
-        self.optimiser = optimiser_class()
         self.power_model = power_model_class()
-        
-        # Initialize optional models if provided
-        if kite_model_class:
-            self.kite_model = kite_model_class()
-        if control_model_class:
-            self.control_model = control_model_class()
-        if groundstation_model_class:
-            self.groundstation_model = groundstation_model_class()
     
     def calculate_aep(self, data_path: Path, results_path: Path) -> Dict[str, Any]:
         """Execute the complete AEP calculation pipeline.
@@ -91,8 +62,8 @@ class AEPCalculator:
         :rtype: Dict[str, Any]
         :raises ValueError: If required models are not initialized
         """
-        if not all([self.wind_model, self.optimiser, self.power_model]):
-            raise ValueError("Required models (wind, optimiser, power) must be initialized")
+        if not all([self.wind_model, self.power_model]):
+            raise ValueError("Required models (wind, power) must be initialized")
         
         # Define intermediate file paths
         wind_profiles_path = results_path / "wind_profiles.yml"

@@ -1,0 +1,35 @@
+# Tether system configuration
+# Tether properties and mechanical characteristics
+
+# Basic tether properties
+length: 300  # m - nominal tether length
+diameter: 0.008  # m - tether diameter (8mm) - realistic for AWE loads
+density: 724  # kg/m3 - tether material density (Dyneema)
+drag_coefficient: 1.1  # drag coefficient of the tether
+
+# Material properties
+material: "Dyneema"
+tensile_strength: 3500000000  # Pa - ultimate tensile strength
+elastic_modulus: 120000000000  # Pa - Young's modulus
+safety_factor: 4.0  # safety factor for maximum working load
+
+# Tether dynamics
+mass_per_length: 0.012  # kg/m - linear mass density
+damping_coefficient: 0.02  # damping coefficient
+
+# Environmental resistance
+uv_resistance: true  # UV resistance
+abrasion_resistance: "high"  # abrasion resistance level
+temperature_range:
+  min: -40  # °C - minimum operating temperature
+  max: 80   # °C - maximum operating temperature
+
+# Connection points
+attachment_points:
+  kite_connection: "bridle"  # connection type at kite
+  ground_connection: "winch_drum"  # connection type at ground
+
+# Operational limits
+max_working_load: 12000  # N - maximum working load
+recommended_working_load: 8000  # N - recommended working load
+fatigue_cycles: 1000000  # number of fatigue cycles
