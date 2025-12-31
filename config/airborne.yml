@@ -2,18 +2,18 @@
 # Physical and aerodynamic parameters for the kite system
 
 # Mass properties
-mass: 5.0                     # Kite mass [kg]
+mass: 20.0                     # Kite mass [kg]
 
 # Aerodynamic properties  
-projected_area: 25.0           # Projected kite area [m²]
+projected_area: 20           # Projected kite area [m²]
 
 drag_coefficient:
-  powered: 0.8                 # Drag coefficient in powered state [-]
-  depowered: 1.2              # Drag coefficient in depowered state [-]
+  powered: 0.17                 # Drag coefficient in powered state [-]
+  depowered: 0.14              # Drag coefficient in depowered state [-]
 
 lift_coefficient:
-  powered: 0.3                 # Lift coefficient in powered state [-]
-  depowered: 0.1              # Lift coefficient in depowered state [-]
+  powered: 0.8                 # Lift coefficient in powered state [-]
+  depowered: 0.4              # Lift coefficient in depowered state [-]
 
 # Additional geometry (for reference)
 geometry:

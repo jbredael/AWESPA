@@ -2,7 +2,7 @@
 """
 Wind Profile Clustering Script
 
-This script performs wind profile clustering using the AWERA wrapper
+This script performs wind profile clustering using the AWESPA wrapper
 and displays the resulting clusters in their normalized form.
 
 Usage:
@@ -19,11 +19,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Add the src directory to the path to import awera
+# Add the src directory to the path to import awespa
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from awera.wind.clustering import WindProfileClusteringModel
+from awespa.wind.clustering import WindProfileClusteringModel
 
 
 def run_wind_clustering():

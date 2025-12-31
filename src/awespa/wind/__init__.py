@@ -1,4 +1,4 @@
-"""Wind modeling components for AWERA."""
+"""Wind modeling components for AWESPA."""
 
 from .base import WindProfileModel
 from .clustering import WindProfileClusteringModel

@@ -1,4 +1,4 @@
-"""Pipeline components for AWERA orchestration."""
+"""Pipeline components for AWESPA orchestration."""
 
 from .aep import AEPCalculator
 

@@ -9,7 +9,7 @@ from ..power.base import PowerEstimationModel
 
 
 class AEPCalculator:
-    """Orchestrates the AWERA toolchain to compute Annual Energy Production.
+    """Orchestrates the AWESPA toolchain to compute Annual Energy Production.
     
     This class coordinates the execution of wind clustering, optimisation,
     and power estimation models to compute AEP for AWE systems.

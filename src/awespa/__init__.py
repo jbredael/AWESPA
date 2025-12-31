@@ -1,6 +1,6 @@
-"""AWERA: Airborne Wind Energy Resource Assessment Toolchain.
+"""AWESPA: Airborne Wind Energy System Performance Assessment Toolchain.
 
-A modular toolchain for assessing airborne wind energy resources using
+A modular toolchain for assessing airborne wind energy system performance using
 wind profile clustering, system optimization, and power estimation.
 """
 

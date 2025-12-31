@@ -41,7 +41,7 @@ class AWEPowerEstimationModel(PowerEstimationModel):
     """Wrapper for the AWE_production_estimation repository.
     
     This wrapper adapts the vendored AWE power estimation functionality
-    to the AWERA modular architecture, handling YAML-based configuration
+    to the AWESPA modular architecture, handling YAML-based configuration
     and power curve computation for wind profile clusters.
     """
     

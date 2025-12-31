@@ -8,7 +8,7 @@ power curves for wind resource clusters.
 Usage:
     python scripts/test_power_estimation.py
 
-Author: AWERA Development Team
+Author: AWESPA Development Team
 Date: December 2025
 """
 
@@ -18,11 +18,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Add the src directory to the path to import awera
+# Add the src directory to the path to import awespa
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from awera.power.awe_power import AWEPowerEstimationModel
+from awespa.power.awe_power import AWEPowerEstimationModel
 
 
 def test_power_estimation():

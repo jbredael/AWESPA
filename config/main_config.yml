@@ -1,4 +1,4 @@
-# Main AWERA pipeline configuration
+# Main AWESPA pipeline configuration
 # This configuration orchestrates the complete AEP calculation pipeline
 
 # Component configurations - paths to individual config files

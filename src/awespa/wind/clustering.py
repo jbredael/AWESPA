@@ -26,7 +26,7 @@ class WindProfileClusteringModel(WindProfileModel):
     """Wrapper for the wind-profile-clustering repository.
     
     This wrapper adapts the vendored wind profile clustering functionality
-    to the AWERA modular architecture, handling data paths redirection
+    to the AWESPA modular architecture, handling data paths redirection
     and YAML-based configuration.
     """
     
