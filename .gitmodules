@@ -1,0 +1,9 @@
+[submodule "src/awespa/vendor/LuchsingerModel"]
+	path = src/awespa/vendor/LuchsingerModel
+	url = https://github.com/jbredael/LuchsingerModel.git
+[submodule "src/awespa/vendor/wind-profile-clustering"]
+	path = src/awespa/vendor/wind-profile-clustering
+	url = https://github.com/jbredael/wind-profile-clustering.git
+[submodule "src/awespa/vendor/AWE_production_estimation"]
+	path = src/awespa/vendor/AWE_production_estimation
+	url = https://github.com/AndreaBertozzi/AWE_production_estimation.git
