@@ -1,4 +1,6 @@
 # Sphinx extensions
+
+# Sphinx and documentation dependencies
 sphinx
 sphinx-tabs
 sphinx-copybutton
@@ -9,3 +11,12 @@ linkify-it-py
 pydata-sphinx-theme
 sphinx-book-theme
 sphinx-rtd-theme
+
+# Core dependencies for scripts
+pyyaml
+numpy
+matplotlib
+
+# Optional: pathlib and datetime are standard library, no need to add
+
+# Note: awespa is a local package, vendor requirements are to be installed separately
