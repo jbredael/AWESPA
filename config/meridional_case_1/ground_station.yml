@@ -1,0 +1,17 @@
+metadata:
+  description: Ground station configuration including electrical efficiencies and power conversion
+  note: Configuration for AWE system ground station component
+
+electrical_efficiencies:
+  motor_controller:
+    self_consumption_w: 0
+    efficiency:
+
+  dc_ac_converter:
+    self_consumption_w: 0
+    efficiency:
+  
+  external_battery:
+    connected: false
+    self_consumption_w: 0
+    efficiency: 

@@ -1,0 +1,13 @@
+metadata:
+  description: Airborne system configuration including kite properties and aerodynamic coefficients
+  note: Configuration for AWE system airborne component
+
+kite:
+  mass_kg: 12.0
+  projected_area_m2: 19.75
+  drag_coefficient:
+    powered: 0.10258855192325245
+    depowered: 0.07656324429141043
+  lift_coefficient:
+    powered: 0.8364294128553061
+    depowered: 0.5975264798828382

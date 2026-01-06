@@ -1,0 +1,55 @@
+metadata:
+  description: Operational constraints and optimization bounds for AWE system
+  note: Defines safe operating limits and optimization boundaries for system operation
+
+bounds:
+  avg_elevation_deg:
+    description: Average elevation angle during reel out
+    min: 30.0
+    max: 60.0
+  
+  max_azimuth_deg:
+    description: Maximum azimuth angle during reel out (max flight cone width)
+    min: 25.0
+    max: 50.0
+  
+  relative_elevation_deg:
+    description: Maximum elevation relative to the average elevation (max flight cone height)
+    min: 5.0
+    max: 17.0
+  
+  force_limits_kgf:
+    description: Minimum force to have control on the kite
+    min: 50.0
+    max: 6000.0
+  
+  tether_stroke_m:
+    description: Reel out distance
+    min: 75.0
+    max: 150.0
+  
+  minimum_tether_length_m:
+    description: Tether length at start of reel-out
+    min: 180.0
+    max: 240.0
+
+  parametric:
+    ineq_cons_cw_patterns:
+      enabled: true
+      min_patterns: 1
+      description: Minimum number of crosswind patterns
+    
+    ineq_cons_max_elevation:
+      enabled: true
+      max_elevation_deg: 100.0
+      description: Maximum elevation angle
+    
+    ineq_cons_max_course_rate:
+      enabled: true
+      max_course_rate_rad_s:
+      description: Maximum course rate
+    
+    ineq_cons_min_height:
+      enabled: true
+      min_height_m:
+      description: Minimum ground clearance
