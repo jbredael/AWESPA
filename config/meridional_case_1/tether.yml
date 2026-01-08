@@ -3,7 +3,7 @@ metadata:
   note: Configuration for AWE system tether component
 
 tether:
-  length_m: 360.0
+  length_m: 400.0
   diameter_m: 0.014
   density_kg_m3: 617.13
   drag_coefficient: 1.1

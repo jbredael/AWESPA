@@ -1,40 +1,25 @@
 metadata:
   description: Ground station configuration including electrical efficiencies and power conversion
   note: Configuration for AWE system ground station component
+  # Model-specific parameters stored in metadata
+  nominalTetherForce: 42000.0
+  nominalGeneratorPower: 150000.0
+  reelOutSpeedLimit: 10.0
+  reelInSpeedLimit: 18.0
+  generatorEfficiency: 0.95
+  storageEfficiency: 0.95
 
 electrical_efficiencies:
   motor_controller:
     self_consumption_w: 0
-    efficiency:
+    efficiency: 0.95
 
   dc_ac_converter:
     self_consumption_w: 0
-    efficiency:
+    efficiency: 0.95
   
   external_battery:
     connected: false
     self_consumption_w: 0
-    efficiency: 
+    efficiency: 0.95
 
-
-# generator and ground station parameters
-max_generator_power: 100000.0
-drum_outer_radius: 0.5
-drum_inner_radius: 0.49
-nominal_tether_force: 3000.0
-nominal_generator_power: 50000.0
-reel_out_speed_limit: 8.0
-reel_in_speed_limit: 25.0
-generator_speed_constant: 0.0833
-generator_terminal_resistance: 0.048
-generator_other_losses: 0.9
-generator_static_friction: 3.18
-generator_dynamic_friction: 0.799
-motor_speed_constant: 0.0833
-motor_terminal_resistance: 0.108
-motor_other_losses: 0.9
-motor_static_friction: 3.18
-motor_dynamic_friction: 0.799
-storage_efficiency: 0.95
-brake_efficiency: 0.95
-drum_density: 2810.0

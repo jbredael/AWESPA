@@ -25,9 +25,38 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+# Add awesIO vendor path for validation
+AWESIO_PATH = PROJECT_ROOT / "src" / "awespa" / "vendor" / "awesIO" / "src"
+sys.path.insert(0, str(AWESIO_PATH))
+
 from awespa.wind.clustering import WindProfileClusteringModel
 from awespa.power.luchsinger_power import LuchsingerPowerModel
 from awespa.pipeline.aep import calculate_aep
+from awesio.validator import validate as awesio_validate
+
+
+def validate_config_file(config_path: Path, schema_type: str) -> bool:
+    """Validate a configuration file using AWESIO validator.
+    
+    Args:
+        config_path: Path to the configuration YAML file.
+        schema_type: Schema type name (without _schema suffix).
+        
+    Returns:
+        bool: True if validation passes, False otherwise.
+    """
+    try:
+        awesio_validate(
+            input=config_path,
+            schema_type=f"{schema_type}_schema",
+            restrictive=True,  # No extra parameters allowed
+            defaults=False,    # No default values added
+        )
+        print(f"  ✓ {config_path.name} validated successfully")
+        return True
+    except Exception as e:
+        print(f"  ✗ {config_path.name} validation failed: {e}")
+        return False
 
 
 def main():
@@ -57,7 +86,7 @@ def main():
     print("SECTION 1: WIND CLUSTERING")
     print("=" * 80)
     
-    run_wind_clustering = False  # Set to False to skip if already run
+    run_wind_clustering = True  # Set to False to skip if already run
     
     if run_wind_clustering:
         print("\n[1/3] Initializing wind clustering model...")
@@ -127,7 +156,7 @@ def main():
     run_power_curves = True  # Set to False to skip if already run
     
     if run_power_curves:
-        print("\n[1/3] Initializing Luchsinger power model...")
+        print("\n[1/4] Initializing Luchsinger power model...")
         power_model = LuchsingerPowerModel()
         
         # Specify configuration file paths
@@ -140,7 +169,19 @@ def main():
         # Wind resource is in the results directory for this case
         wind_resource_config_path = results_dir / "wind_resource.yml"
         
-        print(f"Loading configuration files:")
+        # Validate configuration files using AWESIO
+        print("\n[2/4] Validating configuration files with AWESIO...")
+        validation_passed = True
+        validation_passed &= validate_config_file(airborne_path, "airborne")
+        validation_passed &= validate_config_file(tether_path, "tether")
+        validation_passed &= validate_config_file(operational_constraints_path, "operational_constraints")
+        validation_passed &= validate_config_file(ground_station_path, "ground_station")
+        
+        if not validation_passed:
+            print("\n✗ Configuration validation failed. Please fix the errors above.")
+            return False
+        
+        print(f"\nLoading configuration files:")
         print(f"  - Airborne: {airborne_path.name}")
         print(f"  - Tether: {tether_path.name}")
         print(f"  - Operational constraints: {operational_constraints_path.name}")
@@ -165,28 +206,41 @@ def main():
             return False
         
         # Compute power curves
-        print("\n[2/3] Computing power curves for all wind clusters...")
+        print("\n[3/4] Computing power curves...")
         try:
-            power_model.compute_power_curves(power_curves_path)
+            power_curve_data = power_model.compute_power_curves()
             print(f"✓ Power curves computed successfully")
-            print(f"✓ Results saved to: {power_curves_path}")
         except Exception as e:
             print(f"✗ Error computing power curves: {e}")
             import traceback
             traceback.print_exc()
             return False
         
-        # Display power curve summary
-        print("\n[3/3] Power curve summary:")
+        # Export power curve to YAML
+        print("\n[4/4] Exporting power curve to YAML...")
         try:
-            with open(power_curves_path, 'r') as f:
-                power_data = yaml.safe_load(f)
-            agg_curve = power_data['aggregate_power_curve']
-            print(f"  - Number of cluster curves: {power_data['metadata']['n_clusters']}")
-            print(f"  - Rated power: {agg_curve['max_power_w']/1000:.2f} kW")
-            print(f"  - Mean power: {agg_curve['mean_power_w']/1000:.2f} kW")
-            print(f"  - Cut-in wind speed: {agg_curve['cut_in_wind_speed_m_s']:.2f} m/s")
-            print(f"  - Cut-out wind speed: {agg_curve['cut_out_wind_speed_m_s']:.2f} m/s")
+            power_model.export_to_yaml(power_curves_path)
+            print(f"✓ Results saved to: {power_curves_path}")
+        except Exception as e:
+            print(f"✗ Error exporting power curve: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+        
+        # Display power curve summary
+        print("\nPower curve summary:")
+        try:
+            model_cfg = power_curve_data['metadata']['model_config']
+            pc = power_curve_data['power_curves'][0]
+            max_power = max(pc['cycle_power_w'])
+            mean_power = sum(p for p in pc['cycle_power_w'] if p > 0) / max(1, sum(1 for p in pc['cycle_power_w'] if p > 0))
+            rated_idx = pc['cycle_power_w'].index(max_power)
+            rated_wind_speed = power_curve_data['reference_wind_speeds_m_s'][rated_idx]
+            print(f"  - Rated power: {max_power/1000:.2f} kW")
+            print(f"  - Mean power: {mean_power/1000:.2f} kW")
+            print(f"  - Rated wind speed: {rated_wind_speed:.2f} m/s")
+            print(f"  - Cut-in wind speed: {model_cfg['cut_in_wind_speed_m_s']:.2f} m/s")
+            print(f"  - Cut-out wind speed: {model_cfg['cut_out_wind_speed_m_s']:.2f} m/s")
         except Exception as e:
             print(f"Warning: Could not display summary: {e}")
     else:
@@ -203,39 +257,44 @@ def main():
     print("SECTION 3: AEP CALCULATION AND VISUALIZATION")
     print("=" * 80)
     
-    print("\n[1/2] Calculating Annual Energy Production...")
-    try:
-        aep_results = calculate_aep(
-            power_curve_path=power_curves_path,
-            wind_resource_path=wind_resource_path,
-            output_path=aep_results_path,
-            plot=True,  # Generate plots
-            plot_output_dir=results_dir
-        )
-        print(f"✓ AEP calculation complete")
-        print(f"✓ Results saved to: {aep_results_path}")
-    except Exception as e:
-        print(f"✗ Error calculating AEP: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+    run_aep_analysis = True  # Set to False to skip AEP analysis
     
-    # Display AEP summary
-    print("\n[2/2] AEP Analysis Summary:")
-    print("-" * 80)
-    print(f"Annual Energy Production:")
-    print(f"  - Total AEP: {aep_results['total_aep']['mwh']:.2f} MWh/year")
-    print(f"            = {aep_results['total_aep']['gwh']:.4f} GWh/year")
-    print(f"  - Rated power: {aep_results['rated_power_kw']:.2f} kW")
-    print(f"  - Mean power: {aep_results['mean_power_kw']:.2f} kW")
-    print(f"  - Capacity factor: {aep_results['capacity_factor']*100:.2f}%")
-    
-    print(f"\nCluster Contributions:")
-    for contrib in aep_results['cluster_contributions']:
-        cluster_id = contrib['cluster_id']
-        aep_mwh = contrib['aep_mwh']
-        frequency = contrib['frequency'] * 100
-        print(f"  - Cluster {cluster_id}: {aep_mwh:.2f} MWh/year ({frequency:.1f}% occurrence)")
+    if run_aep_analysis:
+        print("\n[1/2] Calculating Annual Energy Production...")
+        try:
+            aep_results = calculate_aep(
+                power_curve_path=power_curves_path,
+                wind_resource_path=wind_resource_path,
+                output_path=aep_results_path,
+                plot=True,  # Generate plots
+                plot_output_dir=results_dir
+            )
+            print(f"✓ AEP calculation complete")
+            print(f"✓ Results saved to: {aep_results_path}")
+        except Exception as e:
+            print(f"✗ Error calculating AEP: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+        
+        # Display AEP summary
+        print("\n[2/2] AEP Analysis Summary:")
+        print("-" * 80)
+        print(f"Annual Energy Production:")
+        print(f"  - Total AEP: {aep_results['total_aep']['mwh']:.2f} MWh/year")
+        print(f"            = {aep_results['total_aep']['gwh']:.4f} GWh/year")
+        print(f"  - Rated power: {aep_results['rated_power_kw']:.2f} kW")
+        print(f"  - Mean power: {aep_results['mean_power_kw']:.2f} kW")
+        print(f"  - Capacity factor: {aep_results['capacity_factor']*100:.2f}%")
+        
+        print(f"\nCluster Contributions:")
+        for contrib in aep_results['cluster_contributions']:
+            cluster_id = contrib['cluster_id']
+            aep_mwh = contrib['aep_mwh']
+            frequency = contrib['frequency'] * 100
+            print(f"  - Cluster {cluster_id}: {aep_mwh:.2f} MWh/year ({frequency:.1f}% occurrence)")
+    else:
+        print("\nSkipping AEP analysis (set run_aep_analysis=True to enable)")
     
     print("\n" + "=" * 80)
     print("FULL AEP ANALYSIS COMPLETE!")

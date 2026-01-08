@@ -11,11 +11,11 @@ n_wind_speed_bins: 50           # Number of bins for wind speed probability dist
 data_source:
   type: "era5"                  # Data source type: 'era5', 'fgw_lidar', or 'dowa'
   location:
-    latitude: 52.0              # Location latitude in degrees
-    longitude: 4.0              # Location longitude in degrees
+    latitude: 54.126495365765976              # Location latitude in degrees
+    longitude: -9.781335066728756              # Location longitude in degrees
   altitude_range: [0, 500]      # Altitude range in meters [min, max]
   years: [2011, 2011]           # Year range [start_year, end_year]
-
+  
 # Output configuration
 output:
   include_plots: true           # Generate visualization plots
