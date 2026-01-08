@@ -10,7 +10,7 @@ n_wind_speed_bins: 50           # Number of bins for wind speed probability dist
 # Data source configuration
 data_source:
   type: "era5"                  # Data source type: 'era5', 'fgw_lidar', or 'dowa'
-  location:
+  location:   # Bangor Erris Ireland
     latitude: 54.126495365765976              # Location latitude in degrees
     longitude: -9.781335066728756              # Location longitude in degrees
   altitude_range: [0, 500]      # Altitude range in meters [min, max]

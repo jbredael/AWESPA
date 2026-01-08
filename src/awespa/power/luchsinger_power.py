@@ -102,13 +102,14 @@ class LuchsingerPowerModel(PowerEstimationModel):
     def _create_luchsinger_config(self) -> None:
         """Create configuration compatible with the Luchsinger PowerModel."""
         
-        # Get parameters from metadata (AWESIO-compliant location)
-        gs_metadata = self.ground_station_config.get('metadata', {})
-        op_metadata = self.operational_constraints.get('metadata', {})
-        op_limits = op_metadata.get('operational_limits', {})
-        atmosphere = op_metadata.get('atmosphere', {})
-        model_meta = op_metadata.get('model', {})
-        airborne_metadata = self.airborne_config.get('metadata', {})
+        # Get parameters from dedicated sections
+        aero_props = self.airborne_config.get('aerodynamic_properties', {})
+        generator = self.ground_station_config.get('generator', {})
+        winch = self.ground_station_config.get('winch', {})
+        storage = self.ground_station_config.get('storage', {})
+        wind_limits = self.operational_constraints.get('wind_limits', {})
+        atmosphere = self.operational_constraints.get('atmosphere', {})
+        model_description = self.operational_constraints.get('metadata', {}).get('model_description', '')
 
         # Map AWESPA config to Luchsinger config format
         luchsinger_config = {
@@ -117,8 +118,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 'liftCoefficientOut': self.airborne_config['kite']['lift_coefficient']['powered'],
                 'dragCoefficientOut': self.airborne_config['kite']['drag_coefficient']['powered'],
                 'dragCoefficientIn': self.airborne_config['kite']['drag_coefficient']['depowered'],
-                'flatteningFactor': airborne_metadata.get('flatteningFactor'),
-                'areaDensity': airborne_metadata.get('areaDensity'),
+                'flatteningFactor': aero_props.get('flattening_factor'),
+                'areaDensity': aero_props.get('area_density_kg_m2'),
             },
             'tether': {
                 'maxLength': self.tether_config['tether']['length_m'],
@@ -127,29 +128,29 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 'diameter': self.tether_config['tether']['diameter_m'],
             },
             'atmosphere': {
-                'airDensity': atmosphere.get('air_density'),
-                'temperature': atmosphere.get('temperature'),
-                'pressure': atmosphere.get('pressure'),
-                'viscosity': atmosphere.get('viscosity'),
+                'airDensity': atmosphere.get('air_density_kg_m3'),
+                'temperature': atmosphere.get('temperature_k'),
+                'pressure': atmosphere.get('pressure_pa'),
+                'viscosity': atmosphere.get('kinematic_viscosity_m2_s'),
             },
             'groundStation': {
-                'nominalTetherForce': gs_metadata.get('nominalTetherForce'),
-                'nominalGeneratorPower': gs_metadata.get('nominalGeneratorPower'),
-                'reelOutSpeedLimit': gs_metadata.get('reelOutSpeedLimit'),
-                'reelInSpeedLimit': gs_metadata.get('reelInSpeedLimit'),
-                'generatorEfficiency': gs_metadata.get('generatorEfficiency'),
-                'storageEfficiency': gs_metadata.get('storageEfficiency'),
+                'nominalTetherForce': winch.get('nominal_tether_force_n'),
+                'nominalGeneratorPower': generator.get('nominal_power_w'),
+                'reelOutSpeedLimit': winch.get('reel_out_speed_limit_m_s'),
+                'reelInSpeedLimit': winch.get('reel_in_speed_limit_m_s'),
+                'generatorEfficiency': generator.get('efficiency'),
+                'storageEfficiency': storage.get('efficiency'),
             },
             'operational': {
-                'cutInWindSpeed': op_limits.get('min_wind_speed'),
-                'cutOutWindSpeed': op_limits.get('max_wind_speed'),
+                'cutInWindSpeed': wind_limits.get('cut_in_wind_speed_m_s'),
+                'cutOutWindSpeed': wind_limits.get('cut_out_wind_speed_m_s'),
                 'elevationAngleOut': self.operational_constraints['bounds']['avg_elevation_deg']['min'],
                 'elevationAngleIn': self.operational_constraints['bounds']['avg_elevation_deg']['max'],
             },
             'model': {
                 'name': 'luchsinger_awespa_wrapper',
                 'version': '1.0.0',
-                'description': model_meta.get('description'),
+                'description': model_description,
             }
         }
         

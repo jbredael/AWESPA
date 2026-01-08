@@ -1,25 +1,18 @@
 metadata:
   description: Ground station configuration including electrical efficiencies and power conversion
   note: Configuration for AWE system ground station component
-  # Model-specific parameters stored in metadata
-  nominalTetherForce: 42000.0
-  nominalGeneratorPower: 150000.0
-  reelOutSpeedLimit: 10.0
-  reelInSpeedLimit: 18.0
-  generatorEfficiency: 0.95
-  storageEfficiency: 0.95
 
-electrical_efficiencies:
-  motor_controller:
-    self_consumption_w: 0
-    efficiency: 0.95
+generator:
+  nominal_power_w: 150000.0
+  efficiency: 0.95
 
-  dc_ac_converter:
-    self_consumption_w: 0
-    efficiency: 0.95
-  
-  external_battery:
-    connected: false
-    self_consumption_w: 0
-    efficiency: 0.95
+winch:
+  nominal_tether_force_n: 42000.0
+  reel_out_speed_limit_m_s: 10.0
+  reel_in_speed_limit_m_s: 18.0
+
+storage:
+  efficiency: 0.95
+
+
 

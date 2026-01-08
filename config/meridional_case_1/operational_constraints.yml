@@ -1,16 +1,17 @@
 metadata:
   description: Operational constraints and optimization bounds for AWE system
   note: Defines safe operating limits and optimization boundaries for system operation
-  operational_limits:
-    min_wind_speed: 4.0
-    max_wind_speed: 25.0
-  atmosphere:
-    temperature: 288.15
-    pressure: 101325.0
-    viscosity: 1.81e-05
-    air_density: 1.225
-  model:
-    description: Luchsinger power model for pumping kite systems
+  model_description: Luchsinger power model for pumping kite systems
+
+wind_limits:
+  cut_in_wind_speed_m_s: 4.0
+  cut_out_wind_speed_m_s: 25.0
+
+atmosphere:
+  temperature_k: 288.15
+  pressure_pa: 101325.0
+  kinematic_viscosity_m2_s: 1.81e-05
+  air_density_kg_m3: 1.225
 
 bounds:
   avg_elevation_deg:

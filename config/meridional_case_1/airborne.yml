@@ -1,8 +1,10 @@
 metadata:
   description: Airborne system configuration including kite properties and aerodynamic coefficients
   note: Configuration for AWE system airborne component
-  flatteningFactor: 0.9
-  areaDensity: 0.108
+
+aerodynamic_properties:
+  flattening_factor: 0.9
+  area_density_kg_m2: 0.108
 
 kite:
   mass_kg: 12.0

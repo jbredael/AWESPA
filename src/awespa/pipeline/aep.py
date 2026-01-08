@@ -200,8 +200,8 @@ def _compute_aep_from_data(power_data: Dict[str, Any],
     else:
         rated_power = power_data['aggregate_power_curve']['max_power_w']
     
-    mean_power = total_aep_wh / HOURS_PER_YEAR
-    capacity_factor = mean_power / rated_power if rated_power > 0 else 0
+    average_power = total_aep_wh / HOURS_PER_YEAR
+    capacity_factor = average_power / rated_power if rated_power > 0 else 0
     
     return {
         'metadata': {
@@ -216,7 +216,7 @@ def _compute_aep_from_data(power_data: Dict[str, Any],
             'gwh': float(total_aep_wh / 1e9),
         },
         'rated_power_kw': float(rated_power / 1000),
-        'mean_power_kw': float(mean_power / 1000),
+        'mean_power_kw': float(average_power / 1000),
         'capacity_factor': float(capacity_factor),
         'cluster_contributions': cluster_contributions,
     }
@@ -395,9 +395,9 @@ def _plot_capacity_factor_summary(ax, aep_results: Dict[str, Any]) -> None:
     # Calculate average expected power across all clusters
     avg_expected_power = np.mean([c['expected_power_w'] for c in aep_results['cluster_contributions']]) / 1000
     
-    labels = ['Mean Power\n(Annual Avg)', 'Expected Power\n(Weighted Avg)', 'Rated Power\n(Max)']
-    values = [mean_power, avg_expected_power, rated_power]
-    colors = ['green', 'orange', 'blue']
+    labels = ['Average Power',  'Rated Power\n(Max)']
+    values = [mean_power, rated_power]
+    colors = ['green', 'blue']
     
     bars = ax.barh(labels, values, color=colors, alpha=0.7)
     ax.set_xlabel('Power (kW)')

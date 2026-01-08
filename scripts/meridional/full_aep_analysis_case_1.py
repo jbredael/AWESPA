@@ -32,7 +32,8 @@ sys.path.insert(0, str(AWESIO_PATH))
 from awespa.wind.clustering import WindProfileClusteringModel
 from awespa.power.luchsinger_power import LuchsingerPowerModel
 from awespa.pipeline.aep import calculate_aep
-from awesio.validator import validate as awesio_validate
+from awespa.vendor.awesIO.src.awesio.validator import validate as awesio_validate
+
 
 
 def validate_config_file(config_path: Path, schema_type: str) -> bool:
