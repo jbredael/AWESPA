@@ -49,30 +49,31 @@ class LuchsingerPowerModel(PowerEstimationModel):
         self.power_model = None
         self.power_curve_results: Optional[Dict[str, Any]] = None
         
-    def load_configuration(self, config_dir: Path) -> None:
+    def load_configuration(self, 
+                          airborne_path: Path,
+                          tether_path: Path,
+                          operational_constraints_path: Path,
+                          ground_station_path: Path,
+                          wind_resource_path: Path) -> None:
         """Load power model configuration from YAML files.
         
-        Expected configuration files in config_dir:
-        - airborne.yml: Kite mass, area, and aerodynamic properties
-        - tether.yml: Tether properties and constraints
-        - operational_constraints.yml: Operational limits and bounds
-        
-        Wind resource is loaded from results/wind_resource.yml.
-        
         Args:
-            config_dir (Path): Directory containing configuration YAML files.
+            airborne_path: Path to airborne configuration YAML file.
+            tether_path: Path to tether configuration YAML file.
+            operational_constraints_path: Path to operational constraints YAML file.
+            ground_station_path: Path to ground station configuration YAML file.
+            wind_resource_path: Path to wind resource YAML file.
         """
         config_files = {
-            'airborne': config_dir / 'airborne.yml',
-            'tether': config_dir / 'tether.yml',
-            'operational_constraints': config_dir / 'operational_constraints.yml'
+            'airborne': airborne_path,
+            'tether': tether_path,
+            'operational_constraints': operational_constraints_path,
+            'ground_station': ground_station_path,
         }
-        
-        # Wind resource is in results directory, not config
-        wind_resource_path = config_dir.parent / 'results' / 'wind_resource.yml'
         
         # Load all configuration files
         for config_name, config_path in config_files.items():
+            config_path = Path(config_path)
             if not config_path.exists():
                 raise FileNotFoundError(f"Configuration file not found: {config_path}")
             
@@ -85,8 +86,11 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 self.tether_config = config_data
             elif config_name == 'operational_constraints':
                 self.operational_constraints = config_data
+            elif config_name == 'ground_station':
+                self.ground_station_config = config_data
                 
-        # Load wind resource from results directory
+        # Load wind resource
+        wind_resource_path = Path(wind_resource_path)
         if not wind_resource_path.exists():
             raise FileNotFoundError(f"Wind resource file not found: {wind_resource_path}")
             
@@ -98,33 +102,22 @@ class LuchsingerPowerModel(PowerEstimationModel):
         
     def _create_luchsinger_config(self) -> None:
         """Create configuration compatible with the Luchsinger PowerModel."""
-        # Extract bounds from operational constraints
-        bounds = self.operational_constraints.get('bounds', {})
-        op_limits = self.operational_constraints.get('operational_limits', {})
-        
-        # Get tether force bounds (vendor uses kgf, convert to N: max * 9.806)
-        force_limits = bounds.get('force_limits', {})
-        max_tether_force = force_limits.get('max', 500) * 9.806  # kgf -> N
-        
-        # Get speed limits
-        speed_limits = bounds.get('speed_limits', {})
-        max_reel_speed = speed_limits.get('max', 15.0)
-        
+
         # Map AWESPA config to Luchsinger config format
         luchsinger_config = {
             'kite': {
-                'wingArea': self.airborne_config['projected_area'],
-                'liftCoefficientOut': self.airborne_config['lift_coefficient']['powered'],
-                'dragCoefficientOut': self.airborne_config['drag_coefficient']['powered'],
-                'dragCoefficientIn': self.airborne_config['drag_coefficient']['depowered'],
-                'flatteningFactor': self.airborne_config.get('flattening_factor', 0.9),
-                'areaDensity': self.airborne_config.get('area_density', 0.108),
+                'wingArea': self.airborne_config['kite']['projected_area_m2'],
+                'liftCoefficientOut': self.airborne_config['kite']['lift_coefficient']['powered'],
+                'dragCoefficientOut': self.airborne_config['kite']['drag_coefficient']['powered'],
+                'dragCoefficientIn': self.airborne_config['kite']['drag_coefficient']['depowered'],
+                'flatteningFactor': self.airborne_config['kite'].get('flattening_factor'),
+                'areaDensity': self.airborne_config['kite'].get('area_density'),
             },
             'tether': {
-                'maxLength': self.tether_config['length'],
-                'minLength': self.tether_config.get('min_length', self.tether_config['length'] * 0.5),
-                'dragCoefficient': self.tether_config['drag_coefficient'],
-                'diameter': self.tether_config['diameter'],
+                'maxLength': self.tether_config['tether']['length_m'],
+                'minLength': self.tether_config['tether'].get('min_length_m', self.tether_config['tether']['length_m'] * 0.5),
+                'dragCoefficient': self.tether_config['tether']['drag_coefficient'],
+                'diameter': self.tether_config['tether']['diameter_m'],
             },
             'atmosphere': {
                 'airDensity': self.operational_constraints.get('air_density', 1.225),
@@ -132,21 +125,18 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 'pressure': self.operational_constraints.get('pressure', 101325.0),
             },
             'groundStation': {
-                'nominalTetherForce': max_tether_force,
-                'nominalGeneratorPower': self.operational_constraints.get(
-                    'max_generator_power', 100000.0
-                ),
-                'drumOuterRadius': self.operational_constraints.get('drum_outer_radius', 0.5),
-                'drumInnerRadius': self.operational_constraints.get('drum_inner_radius', 0.49),
-                'reelOutSpeedLimit': max_reel_speed,
-                'reelInSpeedLimit': max_reel_speed * 2,  # Typically reel-in is faster
+                'nominalTetherForce': self.ground_station_config.get('nominal_tether_force'),
+                'nominalGeneratorPower': self.ground_station_config.get('nominal_generator_power'),
+                'drumOuterRadius': self.ground_station_config.get('drum_outer_radius'),
+                'drumInnerRadius': self.ground_station_config.get('drum_inner_radius'),
+                'reelOutSpeedLimit': self.ground_station_config.get('reel_out_speed_limit'),
+                'reelInSpeedLimit': self.ground_station_config.get('reel_in_speed_limit'),
             },
             'operational': {
-                'cutInWindSpeed': op_limits.get('min_wind_speed', 4.0),
-                'cutOutWindSpeed': op_limits.get('max_wind_speed', 25.0),
-                'elevationAngleOut': bounds.get('avg_elevation', {}).get('min', 25.0),
-                'elevationAngleIn': bounds.get('max_elevation', {}).get('max', 45.0) if isinstance(
-                    bounds.get('max_elevation'), dict) else 45.0,
+                'cutInWindSpeed': self.operational_constraints['bounds']['operational_limits']['min_wind_speed'],
+                'cutOutWindSpeed': self.operational_constraints['bounds']['operational_limits']['max_wind_speed'],
+                'elevationAngleOut': self.operational_constraints['bounds']['avg_elevation_deg']['min'],
+                'elevationAngleIn': self.operational_constraints['bounds']['avg_elevation_deg']['max'],
             },
             'model': {
                 'name': 'luchsinger_awespa_wrapper',
@@ -186,7 +176,13 @@ class LuchsingerPowerModel(PowerEstimationModel):
         # Get probability matrix and calculate cluster frequencies
         probability_matrix = np.array(self.wind_resource['probability_matrix']['data'])
         # Sum probabilities across wind speed bins for each cluster to get total frequency
-        cluster_frequencies = np.sum(probability_matrix, axis=1) / 100.0  # Convert from % to fraction
+        # Handle both 2D and 3D probability matrices (with wind direction dimension)
+        if probability_matrix.ndim == 3:
+            # Sum across both wind speed and direction bins
+            cluster_frequencies = np.sum(probability_matrix, axis=(1, 2)) / 100.0
+        else:
+            # Sum across wind speed bins only
+            cluster_frequencies = np.sum(probability_matrix, axis=1) / 100.0
         
         # Compute power curves for each cluster
         cluster_power_curves = []
@@ -226,6 +222,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 'frequency': float(frequency),
                 'operating_altitude_m': float(operating_altitude),
                 'speed_ratio': float(speed_ratio),
+                'wind_speeds_m_s': bin_centers.tolist(),
                 'power_values_w': powers,
             })
         
@@ -271,8 +268,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
             float: Operating altitude in m.
         """
         # Get operational bounds from tether config
-        min_altitude = self.tether_config.get('min_length', 100.0) * 0.5
-        max_altitude = self.tether_config['length'] * 0.9
+        min_altitude = self.tether_config['tether'].get('min_length_m', 100.0) * 0.5
+        max_altitude = self.tether_config['tether']['length_m'] * 0.9
         
         # Find altitude with maximum wind within operational bounds
         valid_mask = (altitudes >= min_altitude) & (altitudes <= max_altitude)
@@ -314,10 +311,15 @@ class LuchsingerPowerModel(PowerEstimationModel):
             aggregate_power /= total_frequency
         
         return {
+            'wind_speeds_m_s': bin_centers.tolist(),  # Added plural for consistency
+            'power_values_w': aggregate_power.tolist(),  # Added for consistency
             'wind_speed_m_s': bin_centers.tolist(),
             'power_w': aggregate_power.tolist(),
             'max_power_w': float(np.max(aggregate_power)),
+            'mean_power_w': float(np.mean(aggregate_power[aggregate_power > 0])) if np.any(aggregate_power > 0) else 0.0,
             'rated_wind_speed_m_s': float(bin_centers[np.argmax(aggregate_power)]),
+            'cut_in_wind_speed_m_s': float(bin_centers[np.argmax(aggregate_power > 0)]) if np.any(aggregate_power > 0) else 0.0,
+            'cut_out_wind_speed_m_s': float(bin_centers[np.max(np.where(aggregate_power > 0))]) if np.any(aggregate_power > 0) else 0.0,
         }
         
     def get_power_at_wind_speed(self, wind_speed: float) -> float:

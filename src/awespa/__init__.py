@@ -11,7 +11,7 @@ from . import pipeline
 # Import key classes for easy access
 from .wind import WindProfileModel, WindProfileClusteringModel  
 from .power import PowerEstimationModel
-from .pipeline import AEPCalculator
+from .pipeline import calculate_aep
 
 __version__ = "1.0.0"
 
@@ -24,5 +24,5 @@ __all__ = [
     'WindProfileModel',
     'WindProfileClusteringModel',
     'PowerEstimationModel',
-    'AEPCalculator'
+    'calculate_aep'
 ]

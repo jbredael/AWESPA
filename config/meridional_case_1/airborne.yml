@@ -11,3 +11,5 @@ kite:
   lift_coefficient:
     powered: 0.8364294128553061
     depowered: 0.5975264798828382
+  flattening_factor: 0.9
+  area_density: 0.108

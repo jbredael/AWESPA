@@ -104,6 +104,7 @@ class WindProfileClusteringModel(WindProfileModel):
         prp = cluster_features['perpendicular']
         labels_full = self.clustering_results['sample_labels']
         normalisation_wind_speeds = wind_data['reference_wind_speeds']
+        wind_directions = wind_data['wind_directions']
         n_samples = len(labels_full)
         
         # Prepare metadata
@@ -130,6 +131,7 @@ class WindProfileClusteringModel(WindProfileModel):
             prp=prp,
             labels_full=labels_full,
             normalisation_wind_speeds=normalisation_wind_speeds,
+            wind_directions=wind_directions,
             n_samples=n_samples,
             n_clusters=self.n_clusters,
             output_file=str(output_path),
@@ -196,6 +198,7 @@ class WindProfileClusteringModel(WindProfileModel):
             'parallel_profiles': processed_data['training_data'][:, :len(processed_data['altitude'])],  # First half is parallel
             'perpendicular_profiles': processed_data['training_data'][:, len(processed_data['altitude']):],  # Second half is perpendicular
             'reference_wind_speeds': processed_data['normalisation_value'],  # Reference wind speeds for probability calculation
+            'wind_directions': processed_data['reference_vector_direction'],  # Reference wind directions in radians (1D array)
             'timestamps': processed_data.get('datetime', None)
         }
         

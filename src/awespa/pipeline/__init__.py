@@ -1,5 +1,5 @@
 """Pipeline components for AWESPA orchestration."""
 
-from .aep import AEPCalculator
+from .aep import calculate_aep
 
-__all__ = ['AEPCalculator']
+__all__ = ['calculate_aep']
