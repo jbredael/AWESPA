@@ -1,6 +1,3 @@
-[submodule "src/awespa/vendor/LuchsingerModel"]
-	path = src/awespa/vendor/LuchsingerModel
-	url = https://github.com/jbredael/LuchsingerModel.git
 [submodule "src/awespa/vendor/wind-profile-clustering"]
 	path = src/awespa/vendor/wind-profile-clustering
 	url = https://github.com/jbredael/wind-profile-clustering.git
