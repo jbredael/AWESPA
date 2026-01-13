@@ -11,12 +11,12 @@ from typing import Dict, Any, Optional, List
 from .base import PowerEstimationModel
 
 # Add vendor path to import the Luchsinger model code
-VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "LuchsingerModel"
+VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "LuchsingerPowerModel"
 sys.path.insert(0, str(VENDOR_PATH))
 
 # Import vendor Luchsinger model functionality
 try:
-    from src.core.power_model import PowerModel
+    from src.power_luchsinger.power_model import PowerModel
 except ImportError as e:
     print(f"Import error for Luchsinger model: {e}")
     PowerModel = None
@@ -118,20 +118,13 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 'liftCoefficientOut': self.airborne_config['kite']['lift_coefficient']['powered'],
                 'dragCoefficientOut': self.airborne_config['kite']['drag_coefficient']['powered'],
                 'dragCoefficientIn': self.airborne_config['kite']['drag_coefficient']['depowered'],
-                'flatteningFactor': aero_props.get('flattening_factor'),
-                'areaDensity': aero_props.get('area_density_kg_m2'),
             },
             'tether': {
                 'maxLength': self.tether_config['tether']['length_m'],
                 'minLength': self.tether_config['tether'].get('min_length_m', self.tether_config['tether']['length_m'] * 0.5),
-                'dragCoefficient': self.tether_config['tether']['drag_coefficient'],
-                'diameter': self.tether_config['tether']['diameter_m'],
             },
             'atmosphere': {
                 'airDensity': atmosphere.get('air_density_kg_m3'),
-                'temperature': atmosphere.get('temperature_k'),
-                'pressure': atmosphere.get('pressure_pa'),
-                'viscosity': atmosphere.get('kinematic_viscosity_m2_s'),
             },
             'groundStation': {
                 'nominalTetherForce': winch.get('nominal_tether_force_n'),
