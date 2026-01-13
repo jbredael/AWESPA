@@ -11,3 +11,6 @@
 	path = src/awespa/vendor/awesIO
 	url = https://github.com/awegroup/awesIO.git
 	branch = wind_resource-and-power_curve-templates
+[submodule "src/awespa/vendor/LuchsingerPowerModel"]
+	path = src/awespa/vendor/LuchsingerPowerModel
+	url = https://github.com/jbredael/LuchsingerPowerModel.git
