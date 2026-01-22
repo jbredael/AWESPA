@@ -4,10 +4,6 @@
 [submodule "src/awespa/vendor/AWE_production_estimation"]
 	path = src/awespa/vendor/AWE_production_estimation
 	url = https://github.com/AndreaBertozzi/AWE_production_estimation.git
-[submodule "src/awespa/vendor/awesIO"]
-	path = src/awespa/vendor/awesIO
-	url = https://github.com/awegroup/awesIO.git
-	branch = wind_resource-and-power_curve-templates
 [submodule "src/awespa/vendor/LuchsingerPowerModel"]
 	path = src/awespa/vendor/LuchsingerPowerModel
 	url = https://github.com/jbredael/LuchsingerPowerModel.git

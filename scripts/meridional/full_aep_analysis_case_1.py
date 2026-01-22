@@ -32,7 +32,8 @@ sys.path.insert(0, str(AWESIO_PATH))
 from awespa.wind.clustering import WindProfileClusteringModel
 from awespa.power.luchsinger_power import LuchsingerPowerModel
 from awespa.pipeline.aep import calculate_aep
-from awespa.vendor.awesIO.src.awesio.validator import validate as awesio_validate
+
+from awesio.validator import validate as awesio_validate
 
 
 
@@ -157,51 +158,25 @@ def main():
     run_power_curves = True  # Set to False to skip if already run
     
     if run_power_curves:
-        print("\n[1/4] Initializing Luchsinger power model...")
+        print("\n[1/3] Initializing Luchsinger power model...")
         power_model = LuchsingerPowerModel()
         
-        # Specify configuration file paths
-        # These can be customized to use different versions or variants
-        # e.g., airborne_path = config_dir / "airborne_v2.yml"
-        airborne_path = config_dir / "airborne.yml"
-        tether_path = config_dir / "tether.yml"
-        operational_constraints_path = config_dir / "operational_constraints.yml"
-        ground_station_path = config_dir / "ground_station.yml"
-        # Wind resource is in the results directory for this case
-        wind_resource_config_path = results_dir / "wind_resource.yml"
-        
-        # Validate configuration files using AWESIO
-        # Temporarily disabled due to schema mismatches
-        print("\n[2/4] Validating configuration files with AWESIO...")
-        print("  ⚠ Validation temporarily disabled - work in progress ⚠")
-        validation_passed = True
-        # validation_passed &= validate_config_file(airborne_path, "airborne")
-        # validation_passed &= validate_config_file(tether_path, "tether")
-        # validation_passed &= validate_config_file(operational_constraints_path, "operational_constraints")
-        # validation_passed &= validate_config_file(ground_station_path, "ground_station")
-        
-        if not validation_passed:
-            print("\n✗ Configuration validation failed. Please fix the errors above.")
-            return False
+        # Specify configuration file paths (awesIO format)
+        system_path = config_dir / "soft_kite_pumping_ground_gen_system.yml"
+        simulation_settings_path = config_dir / "Lucsinger_simulation_settings_config.yml"
         
         print(f"\nLoading configuration files:")
-        print(f"  - Airborne: {airborne_path.name}")
-        print(f"  - Tether: {tether_path.name}")
-        print(f"  - Operational constraints: {operational_constraints_path.name}")
-        print(f"  - Wind resource: {wind_resource_config_path}")
+        print(f"  - System: {system_path.name}")
+        print(f"  - Simulation settings: {simulation_settings_path.name}")
         
         try:
             power_model.load_configuration(
-                airborne_path=airborne_path,
-                tether_path=tether_path,
-                operational_constraints_path=operational_constraints_path,
-                ground_station_path=ground_station_path,
-                wind_resource_path=wind_resource_config_path,
+                system_path=system_path,
+                simulation_settings_path=simulation_settings_path,
             )
             print("✓ Power model configuration loaded successfully")
-            print(f"  - Kite area: {power_model.airborne_config['kite']['projected_area_m2']} m²")
-            print(f"  - Kite mass: {power_model.airborne_config['kite']['mass_kg']} kg")
-            print(f"  - Tether length: {power_model.tether_config['tether']['length_m']} m")
+            print(f"  - Kite area: {power_model.power_model.wingArea} m²")
+            print(f"  - Tether length: {power_model.power_model.tetherMaxLength} m")
         except Exception as e:
             print(f"✗ Error loading power model configuration: {e}")
             import traceback
@@ -209,7 +184,7 @@ def main():
             return False
         
         # Compute power curves
-        print("\n[3/4] Computing power curves...")
+        print("\n[2/3] Computing power curves...")
         try:
             power_curve_data = power_model.compute_power_curves()
             print(f"✓ Power curves computed successfully")
@@ -220,7 +195,7 @@ def main():
             return False
         
         # Export power curve to YAML
-        print("\n[4/4] Exporting power curve to YAML...")
+        print("\n[3/3] Exporting power curve to YAML...")
         try:
             power_model.export_to_yaml(power_curves_path)
             print(f"✓ Results saved to: {power_curves_path}")
@@ -233,17 +208,15 @@ def main():
         # Display power curve summary
         print("\nPower curve summary:")
         try:
-            model_cfg = power_curve_data['metadata']['model_config']
-            pc = power_curve_data['power_curves'][0]
-            max_power = max(pc['cycle_power_w'])
-            mean_power = sum(p for p in pc['cycle_power_w'] if p > 0) / max(1, sum(1 for p in pc['cycle_power_w'] if p > 0))
-            rated_idx = pc['cycle_power_w'].index(max_power)
-            rated_wind_speed = power_curve_data['reference_wind_speeds_m_s'][rated_idx]
+            max_power = max(power_curve_data['power'])
+            mean_power = sum(p for p in power_curve_data['power'] if p > 0) / max(1, sum(1 for p in power_curve_data['power'] if p > 0))
+            rated_idx = list(power_curve_data['power']).index(max_power)
+            rated_wind_speed = power_curve_data['windSpeed'][rated_idx]
             print(f"  - Rated power: {max_power/1000:.2f} kW")
             print(f"  - Mean power: {mean_power/1000:.2f} kW")
             print(f"  - Rated wind speed: {rated_wind_speed:.2f} m/s")
-            print(f"  - Cut-in wind speed: {model_cfg['cut_in_wind_speed_m_s']:.2f} m/s")
-            print(f"  - Cut-out wind speed: {model_cfg['cut_out_wind_speed_m_s']:.2f} m/s")
+            print(f"  - Cut-in wind speed: {power_model.power_model.cutInWindSpeed:.2f} m/s")
+            print(f"  - Cut-out wind speed: {power_model.power_model.cutOutWindSpeed:.2f} m/s")
         except Exception as e:
             print(f"Warning: Could not display summary: {e}")
     else:

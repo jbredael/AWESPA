@@ -1,0 +1,15 @@
+# Simulation settings for Luchsinger power model
+# These settings define the operational and environmental conditions
+# for power curve calculations.
+
+# Operational parameters
+operational:
+  cut_in_wind_speed_m_s: 4.0      # Cut-in wind speed [m/s]
+  cut_out_wind_speed_m_s: 25.0    # Cut-out wind speed [m/s]
+  elevation_angle_out_deg: 30.0   # Tether elevation during reel-out [degrees]
+  elevation_angle_in_deg: 45.0    # Tether elevation during reel-in [degrees]
+  minimum_tether_length_m: 100.0  # Minimum tether length [m]
+
+# Atmosphere parameters
+atmosphere:
+  air_density_kg_m3: 1.225        # Air density at sea level [kg/m³]

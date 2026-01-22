@@ -1,0 +1,23 @@
+# Example wind profile clustering configuration
+# This configuration file defines parameters for wind profile clustering
+
+# Clustering parameters
+n_clusters: 8                    # Number of wind profile clusters to identify
+n_pcs: 5                        # Number of principal components for dimensionality reduction
+ref_height: 100.0               # Reference height in meters for normalization
+n_wind_speed_bins: 50           # Number of bins for wind speed probability distribution
+
+# Data source configuration
+data_source:
+  type: "era5"                  # Data source type: 'era5', 'fgw_lidar', or 'dowa'
+  location:   # Bangor Erris Ireland
+    latitude: 54.126495365765976              # Location latitude in degrees
+    longitude: -9.781335066728756              # Location longitude in degrees
+  altitude_range: [0, 500]      # Altitude range in meters [min, max]
+  years: [2011, 2011]           # Year range [start_year, end_year]
+  
+# Output configuration
+output:
+  include_plots: true           # Generate visualization plots
+  plot_format: "png"            # Plot format: 'png', 'pdf', 'svg'
+  export_raw_data: false        # Export raw clustering data in addition to YAML
