@@ -1,19 +1,19 @@
 [project]
 
-name = "exampleproject"
+name = "awespa"
 # Define the name of your project here. This is mandatory. Once you publish your package for the first time,
 # this name will be locked and associated with your project. It affects how users will
 # install your package via pip, like so:
 
-# $ pip install exampleproject
+# $ pip install awespa
 
-# Your project will be accessible at: https://pypi.org/project/exampleproject/
+# Your project will be accessible at: https://pypi.org/project/awespa/
 
-version = "0.1.0"
+version = "1.0.0"
 # Version numbers should conform to PEP 440, and are also mandatory (but they can be set dynamic)
 # https://www.python.org/dev/peps/pep-0440/
 
-description = "Short description of your project"
+description = "Airborne Wind Energy System Performance Assessment Toolchain"
 # Provide a short, one-line description of what your project does. This is known as the
 # "Summary" metadata field:
 # https://packaging.python.org/specifications/core-metadata/#summary
@@ -34,17 +34,17 @@ license = {file = "LICENSE"}
 # This specifies the license.
 # It can be a text (e.g. license = {text = "MIT License"}) or a reference to a file with the license text as shown above.
 
-keywords = ["wind-energy", "simulation"]
+keywords = ["airborne-wind-energy", "AWE", "wind-energy", "power-estimation", "wind-clustering", "AEP", "annual-energy-production", "simulation"]
 # Keywords that describe your project. These assist users in discovering your project on PyPI searches.
 # These should be a comma-separated list reflecting the nature or domain of the project.
 
 authors = [
-  {name = "A. Doe", email = "author@tudelft.nl" }
+  {name = "Joren Bredael", email = "j.bredael@tudelft.nl" }
 ]
 # Information about the original authors of the project and their contact details.
 
 maintainers = [
-  {name = "B. Smith", email = "maintainer@tudelft.nl" }
+  {name = "Joren Bredael", email = "j.bredael@tudelft.nl" }
 ]
 # Information about the current maintainers of the project and their contact details.
 
@@ -81,9 +81,14 @@ classifiers = [
 # For more on how this field compares to pip's requirements files, see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [
-  "numpy", 
-  "pandas>=1.5.3", 
-  "matplotlib>=3.7.1"
+  "numpy",
+  "pandas>=1.5.3",
+  "matplotlib>=3.7.1",
+  "pyyaml",
+  "scipy",
+  "scikit-learn",
+  "xarray",
+  "netCDF4"
 ]
 
 # You can define additional groups of dependencies here (e.g., development dependencies).
@@ -97,11 +102,26 @@ dev = [
   "pytest",
   "pytest-cov",
   "black",
-  ]
+  "flake8",
+  "isort",
+  "mypy"
+]
+docs = [
+  "sphinx",
+  "sphinx-tabs",
+  "sphinx-copybutton",
+  "myst-parser",
+  "linkify-it-py",
+  "pydata-sphinx-theme",
+  "sphinx-book-theme",
+  "sphinx-rtd-theme"
+]
 
 [project.urls]
-"Homepage" = "https://github.com/awegroup"
-"Source" = "<enter_your_repository_URL>"
+"Homepage" = "https://github.com/awegroup/AWESPA"
+"Source" = "https://github.com/awegroup/AWESPA"
+"Documentation" = "https://github.com/awegroup/AWESPA#readme"
+"Bug Tracker" = "https://github.com/awegroup/AWESPA/issues"
 
 # To grab all the files from the src folders of installed packages, not only the .py files
 [tool.setuptools.packages.find]
