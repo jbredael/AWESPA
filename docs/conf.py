@@ -56,8 +56,12 @@ html_theme_options = {
     "navigation_with_keys": True,
 }
 
-# Static files path
-html_static_path = ["_static"]
+# Static files path - only include if directory exists
+import os
+if os.path.isdir("_static"):
+    html_static_path = ["_static"]
+else:
+    html_static_path = []
 
 # HTML context for templates
 html_context = {
@@ -67,6 +71,7 @@ html_context = {
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
+
 
 # -- Options for intersphinx -------------------------------------------------
 intersphinx_mapping = {

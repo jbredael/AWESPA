@@ -107,14 +107,10 @@ dev = [
   "mypy"
 ]
 docs = [
-  "sphinx",
-  "sphinx-tabs",
-  "sphinx-copybutton",
+  "sphinx>=5.0",
+  "furo",
   "myst-parser",
-  "linkify-it-py",
-  "pydata-sphinx-theme",
-  "sphinx-book-theme",
-  "sphinx-rtd-theme"
+  "sphinx-autodoc-typehints"
 ]
 
 [project.urls]

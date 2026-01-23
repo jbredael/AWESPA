@@ -6,7 +6,7 @@
 
 A modular Python toolchain for assessing Airborne Wind Energy (AWE) system performance using wind profile clustering, power estimation models, and Annual Energy Production (AEP) calculation.
 
-## :dart: Overview
+## Overview
 
 AWESPA provides a complete pipeline for AWE system performance analysis:
 
@@ -14,7 +14,7 @@ AWESPA provides a complete pipeline for AWE system performance analysis:
 - **Power Estimation**: Compute power curves using physics-based models (e.g., Luchsinger model)
 - **AEP Calculation**: Calculate Annual Energy Production, capacity factor, and cluster contributions
 
-## :package: Project Structure
+## Project Structure
 
 ```
 AWESPA/
@@ -38,7 +38,7 @@ AWESPA/
 └── docs/                      # Documentation
 ```
 
-## :gear: Installation
+## Installation
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ AWESPA/
     deactivate
     ```
 
-## :eyes: Usage
+## Usage
 
 ### Quick Start
 
@@ -158,7 +158,7 @@ aep_results = calculate_aep(
 print(f"Annual Energy Production: {aep_results['aep_kwh']:.2f} kWh")
 ```
 
-## :test_tube: Testing
+## Testing
 
 Run tests using pytest:
 ```bash
@@ -170,7 +170,7 @@ Run with coverage:
 pytest --cov=awespa
 ```
 
-## :wave: Contributing
+## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
@@ -178,7 +178,7 @@ Please make sure to update tests as appropriate.
 
 See [README_dev.md](README_dev.md) for detailed development guidelines.
 
-## :warning: License
+## License
 
 MIT License
 
@@ -188,7 +188,7 @@ Technische Universiteit Delft hereby disclaims all copyright interest in the pro
 
 Prof.dr. H.G.C. (Henri) Werij, Dean of Aerospace Engineering
 
-## :gem: Help and Documentation
+## Help and Documentation
 
 - [**AWESPA Documentation**](https://awegroup.github.io/AWESPA/) - Getting started guide and API reference
 - [AWE Group | Developer Guide](https://awegroup.github.io/developer-guide/)
