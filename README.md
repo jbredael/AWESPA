@@ -1,5 +1,9 @@
 # AWESPA - Airborne Wind Energy System Performance Assessment
 
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://awegroup.github.io/AWESPA/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
 A modular Python toolchain for assessing Airborne Wind Energy (AWE) system performance using wind profile clustering, power estimation models, and Annual Energy Production (AEP) calculation.
 
 ## :dart: Overview
@@ -186,6 +190,7 @@ Prof.dr. H.G.C. (Henri) Werij, Dean of Aerospace Engineering
 
 ## :gem: Help and Documentation
 
+- [**AWESPA Documentation**](https://awegroup.github.io/AWESPA/) - Getting started guide and API reference
 - [AWE Group | Developer Guide](https://awegroup.github.io/developer-guide/)
 - [AWESPA GitHub Repository](https://github.com/awegroup/AWESPA)
 
