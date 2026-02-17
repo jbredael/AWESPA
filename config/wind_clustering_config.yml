@@ -4,7 +4,7 @@
 # Clustering parameters
 n_clusters: 20                    # Number of wind profile clusters to identify
 n_pcs: 5                        # Number of principal components for dimensionality reduction
-ref_height: 100.0               # Reference height in meters for normalization
+ref_height: 200.0               # Reference height in meters for normalization
 n_wind_speed_bins: 50           # Number of bins for wind speed probability distribution
 
 # Data source configuration
@@ -14,7 +14,7 @@ data_source:
     latitude: 54.126495365765976              # Location latitude in degrees
     longitude: -9.781335066728756              # Location longitude in degrees
   altitude_range: [0, 500]      # Altitude range in meters [min, max]
-  years: [2011, 2011]           # Year range [start_year, end_year]
+  years: [2011, 2017]           # Year range [start_year, end_year]
   
 # Output configuration
 output:

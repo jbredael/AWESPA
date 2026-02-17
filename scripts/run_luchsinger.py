@@ -24,7 +24,7 @@ def main():
     
     # Define wind resource and results paths
     results_dir = PROJECT_ROOT / "results"
-    wind_resource_path = results_dir / "wind_resource.yml"
+    wind_resource_path = results_dir / "shear_gaming" / "wind_resource.yml"
     results_dir.mkdir(parents=True, exist_ok=True)
     output_yaml = results_dir / "luchsinger_power_curves.yml"
     
