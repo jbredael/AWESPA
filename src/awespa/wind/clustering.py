@@ -95,7 +95,7 @@ class WindProfileClusteringModel(WindProfileModel):
         
         # Perform clustering analysis using vendor function
         print(f"Performing wind profile clustering with {self.nClusters} clusters...")
-        results = perform_clustering_analysis(rawData, self.nClusters)
+        results = perform_clustering_analysis(rawData, self.nClusters, ref_height=self.refHeight)
         
         # Extract results
         processedDataFull = results['processedDataFull']
