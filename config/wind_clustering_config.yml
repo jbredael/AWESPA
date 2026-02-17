@@ -2,7 +2,7 @@
 # This configuration file defines parameters for wind profile clustering
 
 # Clustering parameters
-n_clusters: 6                    # Number of wind profile clusters to identify
+n_clusters: 20                    # Number of wind profile clusters to identify
 n_pcs: 5                        # Number of principal components for dimensionality reduction
 ref_height: 100.0               # Reference height in meters for normalization
 n_wind_speed_bins: 50           # Number of bins for wind speed probability distribution

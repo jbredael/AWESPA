@@ -121,7 +121,7 @@ class WindProfileClusteringModel(WindProfileModel):
                 'end_year': self.years[1],
                 'years_included': list(range(self.years[0], self.years[1] + 1))
             },
-            'altitude_range_m': self.altitudeRange,
+            'altitude_range_m': list(self.altitudeRange),  # Convert tuple to list
             'clustering_parameters': {
                 'n_pcs': self.clusteringResults['pca'].n_components_,
                 'explained_variance': self.clusteringResults['pc_explained_variance'].tolist(),

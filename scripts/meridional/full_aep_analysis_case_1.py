@@ -168,15 +168,17 @@ def main():
         print(f"\nLoading configuration files:")
         print(f"  - System: {system_path.name}")
         print(f"  - Simulation settings: {simulation_settings_path.name}")
+        print(f"  - Wind resource: {wind_resource_path.name}")
         
         try:
             power_model.load_configuration(
-                system_path=system_path,
-                simulation_settings_path=simulation_settings_path,
+                systemPath=system_path,
+                simulationSettingsPath=simulation_settings_path,
+                windResourcePath=wind_resource_path
             )
             print("✓ Power model configuration loaded successfully")
-            print(f"  - Kite area: {power_model.power_model.wingArea} m²")
-            print(f"  - Tether length: {power_model.power_model.tetherMaxLength} m")
+            print(f"  - Kite area: {power_model.powerModel.wingArea} m²")
+            print(f"  - Tether length: {power_model.powerModel.tetherMaxLength} m")
         except Exception as e:
             print(f"✗ Error loading power model configuration: {e}")
             import traceback
@@ -186,7 +188,9 @@ def main():
         # Compute power curves
         print("\n[2/3] Computing power curves...")
         try:
-            power_curve_data = power_model.compute_power_curves()
+            power_curve_data = power_model.compute_power_curves(
+                outputPath=power_curves_path
+            )
             print(f"✓ Power curves computed successfully")
         except Exception as e:
             print(f"✗ Error computing power curves: {e}")
@@ -194,31 +198,36 @@ def main():
             traceback.print_exc()
             return False
         
-        # Export power curve to YAML
-        print("\n[3/3] Exporting power curve to YAML...")
-        try:
-            power_model.export_to_yaml(power_curves_path)
-            print(f"✓ Results saved to: {power_curves_path}")
-        except Exception as e:
-            print(f"✗ Error exporting power curve: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-        
         # Display power curve summary
-        print("\nPower curve summary:")
+        print("\n[3/3] Power curve summary:")
         try:
-            max_power = max(power_curve_data['power'])
-            mean_power = sum(p for p in power_curve_data['power'] if p > 0) / max(1, sum(1 for p in power_curve_data['power'] if p > 0))
-            rated_idx = list(power_curve_data['power']).index(max_power)
-            rated_wind_speed = power_curve_data['windSpeed'][rated_idx]
-            print(f"  - Rated power: {max_power/1000:.2f} kW")
-            print(f"  - Mean power: {mean_power/1000:.2f} kW")
-            print(f"  - Rated wind speed: {rated_wind_speed:.2f} m/s")
-            print(f"  - Cut-in wind speed: {power_model.power_model.cutInWindSpeed:.2f} m/s")
-            print(f"  - Cut-out wind speed: {power_model.power_model.cutOutWindSpeed:.2f} m/s")
+            # Check if wind shear data was used (multiple profiles)
+            if 'profiles' in power_curve_data and isinstance(power_curve_data['profiles'], list):
+                n_profiles = len(power_curve_data['profiles'])
+                print(f"  - Number of wind profiles: {n_profiles}")
+                print(f"  - Reference height: {power_curve_data['reference_height_m']} m")
+                print(f"  - Operational altitude: {power_curve_data['operational_altitude_m']:.1f} m")
+                # Show summary for first profile
+                profile_0 = power_curve_data['profiles'][0]
+                max_power = max(profile_0['power'])
+                mean_power = sum(p for p in profile_0['power'] if p > 0) / max(1, sum(1 for p in profile_0['power'] if p > 0))
+                print(f"  - Profile 0: Max power: {max_power/1000:.2f} kW, Mean power: {mean_power/1000:.2f} kW")
+            else:
+                # Single power curve (no wind shear)
+                max_power = max(power_curve_data['power'])
+                mean_power = sum(p for p in power_curve_data['power'] if p > 0) / max(1, sum(1 for p in power_curve_data['power'] if p > 0))
+                rated_idx = list(power_curve_data['power']).index(max_power)
+                rated_wind_speed = power_curve_data['windSpeed'][rated_idx]
+                print(f"  - Rated power: {max_power/1000:.2f} kW")
+                print(f"  - Mean power: {mean_power/1000:.2f} kW")
+                print(f"  - Rated wind speed: {rated_wind_speed:.2f} m/s")
+            
+            print(f"  - Cut-in wind speed: {power_model.powerModel.cutInWindSpeed:.2f} m/s")
+            print(f"  - Cut-out wind speed: {power_model.powerModel.cutOutWindSpeed:.2f} m/s")
         except Exception as e:
             print(f"Warning: Could not display summary: {e}")
+            import traceback
+            traceback.print_exc()
     else:
         print("\nSkipping power curve generation (using existing results)")
         if not power_curves_path.exists():
