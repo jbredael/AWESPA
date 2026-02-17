@@ -33,63 +33,63 @@ class LuchsingerPowerModel(PowerEstimationModel):
     
     def __init__(self):
         """Initialize the Luchsinger power estimation model."""
-        self.power_model: Optional[PowerModel] = None # type: ignore
+        self.powerModel: Optional[PowerModel] = None # type: ignore
         
     def load_configuration(
         self, 
-        system_path: Path,
-        simulation_settings_path: Path,
-        operational_constraints_path: Path = None
+        systemPath: Path,
+        simulationSettingsPath: Path,
+        operationalConstraintsPath: Path = None
     ) -> None:
         """Load power model configuration from YAML files.
         
         Args:
-            system_path: Path to the combined system configuration YAML file
+            systemPath (Path): Path to the combined system configuration YAML file
                 (awesIO format containing wing, tether, ground_station components).
-            simulation_settings_path: Path to simulation settings YAML file
+            simulationSettingsPath (Path): Path to simulation settings YAML file
                 containing operational and atmosphere parameters.
-            operational_constraints_path: Not used by Luchsinger model. Defaults to None.
+            operationalConstraintsPath (Path): Not used by Luchsinger model. Defaults to None.
         """
         if PowerModel is None:
             raise ImportError("Luchsinger PowerModel could not be imported")
         
-        self.power_model = PowerModel.from_yaml(
-            yamlPath=system_path,
-            simulationSettingsPath=simulation_settings_path,
+        self.powerModel = PowerModel.from_yaml(
+            yamlPath=systemPath,
+            simulationSettingsPath=simulationSettingsPath,
             validate=False
         )
     
     def compute_power_curves(
         self,
-        output_path: Path = None,
+        outputPath: Path = None,
         plot: bool = False
     ) -> None:
         """Compute power curves and optionally export/plot.
         
         Args:
-            output_path: Path where power curve YAML will be written. If None,
-                no export is performed.
-            plot: Whether to generate and display plots.
+            outputPath (Path): Path where power curve YAML will be written. If None,
+                no export is performed. Defaults to None.
+            plot (bool): Whether to generate and display plots. Defaults to False.
         """
-        if self.power_model is None:
+        if self.powerModel is None:
             raise ValueError("Power model not initialized. Call load_configuration first.")
         
         # Compute power curves with 500 points
-        num_points = 500
-        data = self.power_model.generate_power_curve(numPoints=num_points)
+        numPoints = 500
+        data = self.powerModel.generate_power_curve(numPoints=numPoints)
         
         # Export to YAML if output path provided
-        if output_path is not None:
-            self.power_model.export_power_curves_awesio(
+        if outputPath is not None:
+            self.powerModel.export_power_curves_awesio(
                 data=data,
-                output_path=output_path,
+                output_path=outputPath,
                 validate=False
             )
-            print(f"Power curve exported to: {output_path}")
+            print(f"Power curve exported to: {outputPath}")
         
         # Generate plots if requested
         if plot:
-            params = extract_model_params(self.power_model)
+            params = extract_model_params(self.powerModel)
             plot_comprehensive_analysis(
                 data=data,
                 model_params=params,
@@ -99,33 +99,33 @@ class LuchsingerPowerModel(PowerEstimationModel):
     
     def calculate_power_at_wind_speed(
         self,
-        wind_speed: float,
-        output_path: Path = None,
+        windSpeed: float,
+        outputPath: Path = None,
         plot: bool = False
     ) -> float:
         """Calculate power output at a single wind speed.
         
         Args:
-            wind_speed: Wind speed in m/s.
-            output_path: Path where results will be written. If None,
-                no export is performed.
-            plot: Whether to generate visualization for this wind speed.
+            windSpeed (float): Wind speed in m/s.
+            outputPath (Path): Path where results will be written. If None,
+                no export is performed. Defaults to None.
+            plot (bool): Whether to generate visualization for this wind speed. Defaults to False.
             
         Returns:
-            Power output in W.
+            float: Power output in W.
         """
-        if self.power_model is None:
+        if self.powerModel is None:
             raise ValueError("Power model not initialized. Call load_configuration first.")
         
         # Calculate power at single wind speed
-        result = self.power_model.calculate_power(windSpeed=wind_speed)
+        result = self.powerModel.calculate_power(windSpeed=windSpeed)
         power = result['cyclePower']
         
         # Print the result
-        print(f"\nPower at {wind_speed:.1f} m/s: {power:.2f} W ({power/1000:.2f} kW)")
+        print(f"\nPower at {windSpeed:.1f} m/s: {power:.2f} W ({power/1000:.2f} kW)")
         
         # Export if requested (not yet implemented)
-        if output_path is not None:
+        if outputPath is not None:
             print("Note: Functionality to export results from single wind speed does not exist yet.")
         
         # Plot if requested (not yet implemented in vendored model)

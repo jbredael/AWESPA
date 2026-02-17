@@ -62,7 +62,7 @@ def run_wind_clustering():
     # Display results and generate plots
     try:
         display_cluster_results_from_yaml(output_file)
-        plot_normalized_clusters(output_file, save_path=results_path / "cluster_profiles.png")
+        plot_normalized_clusters(output_file, save_path=results_path / "cluster_profiles.pdf")
     except Exception as e:
         print(f"Error displaying results: {e}")
         return False
@@ -82,8 +82,8 @@ def display_cluster_results_from_yaml(yaml_file_path: Path):
     clusters = cluster_data['clusters']
     prob_matrix = np.array(cluster_data['probability_matrix']['data'])
     
-    # Calculate frequencies
-    frequencies = np.sum(prob_matrix, axis=1)
+    # Calculate frequencies (sum over wind speed and direction bins for each cluster)
+    frequencies = np.sum(prob_matrix, axis=(1, 2))
     
     print(f"Clusters: {metadata['n_clusters']}, Samples: {metadata['total_samples']}")
     print(f"Time range: {metadata['time_range']['start_year']}-{metadata['time_range']['end_year']}")
@@ -119,9 +119,9 @@ def plot_normalized_clusters(yaml_file_path: Path, save_path: Path = None):
     clusters = cluster_data['clusters']
     n_clusters = len(clusters)
     
-    # Extract frequencies from probability matrix
+    # Extract frequencies from probability matrix (sum over wind speed and direction bins)
     prob_matrix = np.array(cluster_data['probability_matrix']['data'])
-    frequencies = np.sum(prob_matrix, axis=1)
+    frequencies = np.sum(prob_matrix, axis=(1, 2))
     
     # Create figure with subplots
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
@@ -196,7 +196,7 @@ def plot_normalized_clusters(yaml_file_path: Path, save_path: Path = None):
     plt.tight_layout()
     
     if save_path:
-        combined_path = save_path.parent / "cluster_components.png"
+        combined_path = save_path.parent / "cluster_components.pdf"
         plt.savefig(combined_path, dpi=300, bbox_inches='tight')
     
     plt.show()

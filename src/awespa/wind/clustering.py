@@ -9,17 +9,20 @@ from typing import Dict, Any, Optional
 from .base import WindProfileModel
 
 # Add vendor path to import the clustering code
-VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "wind-profile-clustering"
+VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "wind-profile-clustering" / "src"
 sys.path.insert(0, str(VENDOR_PATH))
 
 # Import vendor clustering functionality
 try:
-    from wind_profile_clustering import cluster_normalized_wind_profiles_pca
-    from export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities
-except ImportError:
+    from wind_profile_clustering.clustering import perform_clustering_analysis
+    from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities
+    from wind_profile_clustering.read_data.era5 import read_data as read_era5_data
+except ImportError as e:
     # Handle import errors gracefully during development
-    cluster_normalized_wind_profiles_pca = None
+    print(f"Warning: Could not import vendor functions: {e}")
+    perform_clustering_analysis = None
     export_wind_profile_shapes_and_probabilities = None
+    read_era5_data = None
 
 
 class WindProfileClusteringModel(WindProfileModel):
@@ -33,94 +36,96 @@ class WindProfileClusteringModel(WindProfileModel):
     def __init__(self):
         """Initialize the wind profile clustering model."""
         self.config: Optional[Dict[str, Any]] = None
-        self.clustering_results: Optional[Dict[str, Any]] = None
-        self.n_clusters: int = 6
-        self.n_pcs: int = 5
-        self.ref_height: float = 100.0
-        self.n_wind_speed_bins: int = 50
-        self.data_source: str = 'era5'
+        self.clusteringResults: Optional[Dict[str, Any]] = None
+        self.nClusters: int = 6
+        self.nPcs: int = 5
+        self.refHeight: float = 100.0
+        self.nWindSpeedBins: int = 50
+        self.dataSource: str = 'era5'
         self.location: Dict[str, float] = {'latitude': 52.0, 'longitude': 4.0}
-        self.altitude_range: tuple = (0, 500)
+        self.altitudeRange: tuple = (0, 500)
         self.years: tuple = (2011, 2017)
         
-    def load_from_yaml(self, config_path: Path) -> None:
+    def load_from_yaml(self, configPath: Path) -> None:
         """Load configuration parameters from a YAML file.
         
-        :param config_path: Path to the YAML configuration file
-        :type config_path: Path
+        Args:
+            configPath (Path): Path to the YAML configuration file.
         """
-        with open(config_path, 'r') as f:
+        with open(configPath, 'r') as f:
             self.config = yaml.safe_load(f)
         
         # Extract clustering parameters
-        self.n_clusters = self.config.get('n_clusters', self.n_clusters)
-        self.n_pcs = self.config.get('n_pcs', self.n_pcs)
-        self.ref_height = self.config.get('ref_height', self.ref_height)
-        self.n_wind_speed_bins = self.config.get('n_wind_speed_bins', self.n_wind_speed_bins)
+        self.nClusters = self.config.get('n_clusters', self.nClusters)
+        self.nPcs = self.config.get('n_pcs', self.nPcs)
+        self.refHeight = self.config.get('ref_height', self.refHeight)
+        self.nWindSpeedBins = self.config.get('n_wind_speed_bins', self.nWindSpeedBins)
         
         # Extract data source configuration
         if 'data_source' in self.config:
-            data_config = self.config['data_source']
-            self.data_source = data_config.get('type', self.data_source)
-            self.location = data_config.get('location', self.location)
-            self.altitude_range = tuple(data_config.get('altitude_range', self.altitude_range))
-            self.years = tuple(data_config.get('years', self.years))
+            dataConfig = self.config['data_source']
+            self.dataSource = dataConfig.get('type', self.dataSource)
+            self.location = dataConfig.get('location', self.location)
+            self.altitudeRange = tuple(dataConfig.get('altitude_range', self.altitudeRange))
+            self.years = tuple(dataConfig.get('years', self.years))
     
-    def cluster(self, data_path: Path, output_path: Path) -> None:
+    def cluster(self, dataPath: Path, outputPath: Path) -> None:
         """Perform wind profile clustering on the input data.
         
-        :param data_path: Path to the wind data directory
-        :type data_path: Path
-        :param output_path: Path where output YAML file will be written
-        :type output_path: Path
+        Args:
+            dataPath (Path): Path to the wind data directory.
+            outputPath (Path): Path where output YAML file will be written.
         """
         # Check if vendor functions are available
-        if cluster_normalized_wind_profiles_pca is None:
+        if perform_clustering_analysis is None:
             raise ImportError("Vendor clustering functions not available")
             
-        # Load and preprocess the wind data
-        wind_data = self._load_wind_data(data_path)
+        # Load raw wind data
+        if self.dataSource.lower() == 'era5':
+            config = {
+                'data_dir': str(dataPath / "wind_data" / "era5"),
+                'location': self.location,
+                'altitude_range': self.altitudeRange,
+                'years': self.years
+            }
+            print(f"Loading ERA5 data from {config['data_dir']}...")
+            rawData = read_era5_data(config)
+        else:
+            raise NotImplementedError(f"Data source '{self.dataSource}' not yet implemented")
         
-        # Perform clustering
-        print(f"Performing wind profile clustering with {self.n_clusters} clusters...")
+        # Perform clustering analysis using vendor function
+        print(f"Performing wind profile clustering with {self.nClusters} clusters...")
+        results = perform_clustering_analysis(rawData, self.nClusters)
         
-        # Prepare training data by combining parallel and perpendicular components
-        training_data = np.hstack([
-            wind_data['parallel_profiles'],
-            wind_data['perpendicular_profiles']
-        ])
+        # Extract results
+        processedDataFull = results['processedDataFull']
+        self.clusteringResults = results['clusteringResults']
+        labelsFull = results['labelsFull']
+        frequencyClusters = results['frequencyClusters']
         
-        # Perform PCA-based clustering
-        self.clustering_results = cluster_normalized_wind_profiles_pca(
-            training_data=training_data,
-            n_clusters=self.n_clusters,
-            n_pcs=self.n_pcs
-        )
-        
-        # Extract results for export
-        cluster_features = self.clustering_results['clusters_feature']
-        heights = wind_data['heights']
-        prl = cluster_features['parallel']
-        prp = cluster_features['perpendicular']
-        labels_full = self.clustering_results['sample_labels']
-        normalisation_wind_speeds = wind_data['reference_wind_speeds']
-        wind_directions = wind_data['wind_directions']
-        n_samples = len(labels_full)
+        # Extract cluster features for export
+        clusterFeatures = self.clusteringResults['clusters_feature']
+        heights = processedDataFull['altitude']
+        prl = clusterFeatures['parallel']
+        prp = clusterFeatures['perpendicular']
+        normalisationWindSpeeds = processedDataFull['normalisation_value']
+        windDirections = processedDataFull['reference_vector_direction']
+        nSamples = processedDataFull['n_samples']
         
         # Prepare metadata
         metadata = {
-            'data_source': self.data_source.upper(),
+            'data_source': self.dataSource.upper(),
             'location': self.location,
             'time_range': {
                 'start_year': self.years[0],
                 'end_year': self.years[1],
                 'years_included': list(range(self.years[0], self.years[1] + 1))
             },
-            'altitude_range_m': self.altitude_range,
+            'altitude_range_m': self.altitudeRange,
             'clustering_parameters': {
-                'n_pcs': self.n_pcs,
-                'explained_variance': self.clustering_results['pc_explained_variance'].tolist(),
-                'fit_inertia': float(self.clustering_results['fit_inertia'])
+                'n_pcs': self.clusteringResults['pca'].n_components_,
+                'explained_variance': self.clusteringResults['pc_explained_variance'].tolist(),
+                'fit_inertia': float(self.clusteringResults['fit_inertia'])
             }
         }
         
@@ -129,104 +134,43 @@ class WindProfileClusteringModel(WindProfileModel):
             heights=heights,
             prl=prl,
             prp=prp,
-            labels_full=labels_full,
-            normalisation_wind_speeds=normalisation_wind_speeds,
-            wind_directions=wind_directions,
-            n_samples=n_samples,
-            n_clusters=self.n_clusters,
-            output_file=str(output_path),
-            ref_height=self.ref_height,
-            n_wind_speed_bins=self.n_wind_speed_bins,
+            labelsFull=labelsFull,
+            normalisationWindSpeeds=normalisationWindSpeeds,
+            windDirections=windDirections,
+            nSamples=nSamples,
+            nClusters=self.nClusters,
+            outputFile=str(outputPath),
+            refHeight=self.refHeight,
+            nWindSpeedBins=self.nWindSpeedBins,
             metadata=metadata
         )
         
-        print(f"Wind profile clustering results exported to {output_path}")
-    
-    def _load_wind_data(self, data_path: Path) -> Dict[str, Any]:
-        """Load wind data from the specified data directory.
-        
-        This method redirects data loading to use the project-level data directory
-        instead of the vendor repository's internal data directory.
-        
-        :param data_path: Path to the wind data directory
-        :type data_path: Path
-        :return: Processed wind data dictionary
-        :rtype: Dict[str, Any]
-        """
-        if self.data_source.lower() == 'era5':
-            return self._load_era5_data(data_path)
-        else:
-            raise NotImplementedError(f"Data source '{self.data_source}' not yet implemented")
-    
-    def _load_era5_data(self, data_path: Path) -> Dict[str, Any]:
-        """Load ERA5 wind data and prepare for clustering.
-        
-        :param data_path: Path to the ERA5 data directory
-        :type data_path: Path
-        :return: Processed ERA5 wind data
-        :rtype: Dict[str, Any]
-        """
-        # Import ERA5 reader and preprocessing functions
-        sys.path.insert(0, str(VENDOR_PATH / "read_data"))
-        sys.path.insert(0, str(VENDOR_PATH))
-        
-        try:
-            from era5 import read_data
-            from preprocess_data import preprocess_data
-        except ImportError:
-            raise ImportError("ERA5 data reader or preprocessing not available from vendor repository")
-        
-        # Configure ERA5 data reading with redirected path
-        config = {
-            'data_dir': str(data_path / "wind_data" / "era5"),
-            'location': self.location,
-            'altitude_range': self.altitude_range,
-            'years': self.years
-        }
-        
-        print(f"Loading ERA5 data from {config['data_dir']}...")
-        
-        # Load the raw data using the vendor reader
-        raw_data = read_data(config)
-        
-        # Preprocess the data to get normalized profiles
-        processed_data = preprocess_data(raw_data)
-        
-        # Extract relevant components for clustering
-        wind_data = {
-            'heights': processed_data['altitude'],
-            'parallel_profiles': processed_data['training_data'][:, :len(processed_data['altitude'])],  # First half is parallel
-            'perpendicular_profiles': processed_data['training_data'][:, len(processed_data['altitude']):],  # Second half is perpendicular
-            'reference_wind_speeds': processed_data['normalisation_value'],  # Reference wind speeds for probability calculation
-            'wind_directions': processed_data['reference_vector_direction'],  # Reference wind directions in radians (1D array)
-            'timestamps': processed_data.get('datetime', None)
-        }
-        
-        print(f"Loaded {len(wind_data['parallel_profiles'])} wind profiles")
-        print(f"Altitude range: {wind_data['heights'][0]:.0f} - {wind_data['heights'][-1]:.0f} m")
-        
-        return wind_data
+        print(f"Wind profile clustering results exported to {outputPath}")
     
     def get_cluster_frequencies(self) -> np.ndarray:
         """Get the frequency of each cluster as percentage of total samples.
         
-        :return: Array of cluster frequencies
-        :rtype: np.ndarray
-        :raises ValueError: If clustering has not been performed yet
+        Returns:
+            np.ndarray: Array of cluster frequencies.
+            
+        Raises:
+            ValueError: If clustering has not been performed yet.
         """
-        if self.clustering_results is None:
+        if self.clusteringResults is None:
             raise ValueError("No clustering results available. Run cluster() first.")
         
-        return self.clustering_results['frequency_clusters']
+        return self.clusteringResults['frequency_clusters']
     
     def get_cluster_profiles(self) -> Dict[str, np.ndarray]:
         """Get the representative wind profiles for each cluster.
         
-        :return: Dictionary with 'parallel' and 'perpendicular' profile arrays
-        :rtype: Dict[str, np.ndarray]
-        :raises ValueError: If clustering has not been performed yet
+        Returns:
+            Dict[str, np.ndarray]: Dictionary with 'parallel' and 'perpendicular' profile arrays.
+            
+        Raises:
+            ValueError: If clustering has not been performed yet.
         """
-        if self.clustering_results is None:
+        if self.clusteringResults is None:
             raise ValueError("No clustering results available. Run cluster() first.")
         
-        return self.clustering_results['clusters_feature']
+        return self.clusteringResults['clusters_feature']
