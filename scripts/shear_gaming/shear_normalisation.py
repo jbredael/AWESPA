@@ -24,460 +24,496 @@ from scipy import stats
 # CONFIGURATION PARAMETERS
 # =============================================================================
 
+# Use only reel-out phase for effective wind speed calculation
+USE_REEL_OUT_ONLY = True
+
 # Standard shear exponent for normalization
 ALPHA_STD = 0.2
 
 # Reference height (m)
 Z_REF = 200.0
 
-# Reel-out altitude (m) - effective wind speed altitude
-Z_RO = 400.0
+# Exponent for effective wind speed calculation
+VeffEXP = 2
+
+# Rayleigh distribution parameters for AEP calculation
+MEAN_WIND_SPEED_M_S = 10.0  # Mean wind speed at reference height
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results" / "shear_gaming"
-POWER_CURVES_PATH = RESULTS_DIR / "luchsinger_power_curves.yml"
+POWER_CURVES_PATH = RESULTS_DIR / "power_curves_direct_simulation.yml"
 WIND_RESOURCE_PATH = RESULTS_DIR / "wind_resource.yml"
 
-
 # =============================================================================
-# STEP 1: DATA LOADING AND PROCESSING
+# HELPER FUNCTIONS
 # =============================================================================
 
-def load_data() -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Load wind resource and power curve data from YAML files.
-    
-    Returns:
-        Tuple containing power data and wind data dictionaries.
-    """
-    print("Loading data...")
-    
-    with open(POWER_CURVES_PATH, 'r') as f:
-        power_data = yaml.safe_load(f)
-    
-    with open(WIND_RESOURCE_PATH, 'r') as f:
-        wind_data = yaml.safe_load(f)
-    
-    print(f"  Loaded {len(power_data['power_curves'])} power curves")
-    print(f"  Loaded {len(wind_data['clusters'])} wind profiles")
-    
-    return power_data, wind_data
+def load_power_curves(filepath: Path) -> Dict[str, Any]:
+    """Load power curves from YAML file."""
+    with open(filepath, 'r') as f:
+        return yaml.safe_load(f)
 
+def interpolate_wind_speed(altitude_m: float, altitudes: np.ndarray, 
+                          wind_speeds: np.ndarray) -> float:
+    """Interpolate wind speed at given altitude."""
+    return np.interp(altitude_m, altitudes, wind_speeds)
 
-def fit_power_law_shear(altitudes: np.ndarray, wind_speeds: np.ndarray, 
-                         z_ref: float) -> Tuple[float, float]:
-    """Fit power law to wind profile to determine shear exponent.
+def compute_effective_wind_speed(time_s: np.ndarray,
+                                altitude_history_m: np.ndarray, 
+                                altitudes_m: np.ndarray,
+                                wind_speeds_m_s: np.ndarray,
+                                reel_speed_m_s: np.ndarray = None,
+                                use_reel_out_only: bool = False) -> float:
+    """Compute effective wind speed using cubic time-averaged formula.
     
-    Uses log-log linear regression:
-    log(V) = log(V_ref) + alpha * log(z/z_ref)
+    V_eff = (1/T * integral(V(z(t))^3 dt))^(1/3)
     
     Args:
-        altitudes: Array of altitudes (m).
-        wind_speeds: Array of wind speeds at each altitude (m/s).
-        z_ref: Reference height (m).
+        time_s: Time points
+        altitude_history_m: Time series of altitude values
+        altitudes_m: Altitude grid for wind profile
+        wind_speeds_m_s: Wind speed values at each altitude
+        reel_speed_m_s: Reel speed time series (optional, for filtering)
+        use_reel_out_only: If True, only use reel-out phase (reel_speed > 0)
         
     Returns:
-        Tuple of (alpha, V_ref) where alpha is shear exponent and V_ref is
-        reference wind speed at z_ref.
+        Effective wind speed in m/s
     """
-    # Remove zero or negative values
-    valid_mask = (altitudes > 0) & (wind_speeds > 0)
-    z_valid = altitudes[valid_mask]
-    v_valid = wind_speeds[valid_mask]
+    # Filter for reel-out phase if requested
+    if use_reel_out_only and reel_speed_m_s is not None:
+        mask = reel_speed_m_s > 0
+        if not np.any(mask):
+            # No reel-out phase, return zero
+            return 0.0
+        time_filtered = time_s[mask]
+        altitude_filtered = altitude_history_m[mask]
+    else:
+        time_filtered = time_s
+        altitude_filtered = altitude_history_m
     
-    # Transform to log space
-    log_z_ratio = np.log(z_valid / z_ref)
-    log_v = np.log(v_valid)
+    # Interpolate wind speed at each altitude point in the history
+    wind_at_altitude = np.array([
+        interpolate_wind_speed(z, altitudes_m, wind_speeds_m_s)
+        for z in altitude_filtered
+    ])
     
-    # Linear regression in log space
-    slope, intercept, r_value, p_value, std_err = stats.linregress(log_z_ratio, log_v)
+    # Compute integral of V^3 over time using trapezoidal rule
+    v_cubed = wind_at_altitude**VeffEXP
+    integral_v_cubed = np.trapz(v_cubed, time_filtered)
     
-    alpha = slope
-    v_ref = np.exp(intercept)
+    # Divide by total time T
+    total_time = time_filtered[-1] - time_filtered[0]
+    if total_time == 0:
+        return 0.0
+    v_cubed_mean = integral_v_cubed / total_time
     
-    return alpha, v_ref
+    # Return cube root
+    return v_cubed_mean**(1/VeffEXP)
 
-
-def calculate_profile_probabilities(wind_data: Dict[str, Any]) -> np.ndarray:
-    """Calculate total probability of occurrence for each cluster/profile.
-    
-    Sums probabilities across all wind speeds and directions.
+def create_standard_profile(v_ref_m_s: float, altitudes_m: np.ndarray,
+                           alpha_std: float, z_ref: float) -> np.ndarray:
+    """Create standardized wind profile with fixed shear exponent.
     
     Args:
-        wind_data: Wind resource data dictionary.
+        v_ref_m_s: Reference wind speed at reference height
+        altitudes_m: Altitude grid
+        alpha_std: Standard shear exponent
+        z_ref: Reference height in m
         
     Returns:
-        Array of probabilities for each cluster.
+        Wind speeds at each altitude
     """
-    probability_matrix = np.array(wind_data['probability_matrix']['data'])
-    
-    # Sum across wind speeds (dim 1) and directions (dim 2)
-    profile_probs = np.sum(probability_matrix, axis=(1, 2)) / 100.0  # Convert % to fraction
-    
-    return profile_probs
+    return v_ref_m_s * (altitudes_m / z_ref)**alpha_std
 
-
-def extract_profile_data(wind_data: Dict[str, Any], 
-                         power_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Extract and process all profile data.
+def normalize_power(power_meas_w: float, v_eff_meas: float, 
+                   v_eff_std: float) -> float:
+    """Apply energy-based power correction.
     
-    For each profile, extracts wind speeds, fits power law, and prepares
-    power curve data.
-    
-    Args:
-        wind_data: Wind resource data dictionary.
-        power_data: Power curve data dictionary.
-        
-    Returns:
-        List of dictionaries containing processed profile data.
-    """
-    print("\nProcessing wind profiles...")
-    
-    altitudes = np.array(wind_data['altitudes'])
-    clusters = wind_data['clusters']
-    power_curves = power_data['power_curves']
-    profile_probs = calculate_profile_probabilities(wind_data)
-    
-    profiles = []
-    
-    for i, (cluster, power_curve) in enumerate(zip(clusters, power_curves)):
-        cluster_id = cluster['id']
-        
-        # Extract normalized wind speeds and denormalize
-        u_norm = np.array(cluster['u_normalized'])
-        # Assume reference wind speed at z_ref for denormalization
-        # We'll use the power curve reference speeds
-        
-        # Get absolute wind speeds from power curve reference
-        ref_wind_speeds = np.array(power_data['reference_wind_speeds_m_s'])
-        
-        # For each altitude, we need to reconstruct the wind speed profile
-        # The u_normalized gives the shape, we need to scale it appropriately
-        # At z_ref (index where altitude == Z_REF), u_normalized should be 1.0
-        
-        # Find index closest to Z_REF
-        z_ref_idx = np.argmin(np.abs(altitudes - Z_REF))
-        
-        # Calculate wind speeds at all altitudes for a reference condition
-        # We'll use the middle wind speed bin as reference
-        v_ref_sample = ref_wind_speeds[len(ref_wind_speeds)//2]
-        wind_speeds_profile = u_norm * v_ref_sample
-        
-        # Fit power law to determine alpha_meas
-        alpha_meas, v_ref_fitted = fit_power_law_shear(altitudes, wind_speeds_profile, Z_REF)
-        
-        # Extract power curve
-        powers = np.array(power_curve['cycle_power_w'])
-        
-        profiles.append({
-            'id': cluster_id,
-            'altitudes': altitudes,
-            'u_normalized': u_norm,
-            'wind_speeds_profile': wind_speeds_profile,
-            'alpha_meas': alpha_meas,
-            'v_ref_fitted': v_ref_fitted,
-            'ref_wind_speeds': ref_wind_speeds,
-            'powers': powers,
-            'probability': profile_probs[i],
-        })
-        
-        print(f"  Profile {cluster_id:2d}: alpha = {alpha_meas:.4f}, prob = {profile_probs[i]:.4f}")
-    
-    return profiles
-
-
-# =============================================================================
-# STEP 2: SHEAR NORMALIZATION
-# =============================================================================
-
-def apply_shear_normalization(profile: Dict[str, Any], 
-                               alpha_std: float,
-                               z_ref: float,
-                               z_ro: float) -> Dict[str, Any]:
-    """Apply shear normalization to a power curve.
-    
-    Corrects power from measured shear to standard shear using:
     P_corr = P_meas * (V_eff_std / V_eff_meas)^3
     
-    where:
-    V_eff_meas = V_ref * (z_ro / z_ref)^alpha_meas
-    V_eff_std = V_ref * (z_ro / z_ref)^alpha_std
-    
     Args:
-        profile: Profile data dictionary.
-        alpha_std: Standard shear exponent.
-        z_ref: Reference height (m).
-        z_ro: Reel-out height (m).
+        power_meas_w: Measured power in W
+        v_eff_meas: Effective wind speed under measured conditions
+        v_eff_std: Effective wind speed under standard conditions
         
     Returns:
-        Dictionary with normalized power curve and correction factors.
+        Corrected power in W
     """
-    alpha_meas = profile['alpha_meas']
-    ref_wind_speeds = profile['ref_wind_speeds']
-    powers_meas = profile['powers']
-    
-    # Calculate shear factors
-    shear_factor_meas = (z_ro / z_ref) ** alpha_meas
-    shear_factor_std = (z_ro / z_ref) ** alpha_std
-    
-    # For each reference wind speed, calculate effective wind speeds
-    v_eff_meas = ref_wind_speeds * shear_factor_meas
-    v_eff_std = ref_wind_speeds * shear_factor_std
-    
-    # Apply cubic correction (power ~ V^3)
-    correction_factor = (v_eff_std / v_eff_meas) ** 3
-    powers_corr = powers_meas * correction_factor
-    
-    # Apply rated power clipping if needed
-    # Find the maximum power in the original curve (rated power)
-    rated_power = np.max(powers_meas)
-    powers_corr_clipped = np.minimum(powers_corr, rated_power)
-    
-    return {
-        'powers_normalized': powers_corr_clipped,
-        'correction_factor': correction_factor,
-        'mean_correction': np.mean(correction_factor),
-        'v_eff_meas': v_eff_meas,
-        'v_eff_std': v_eff_std,
-    }
+    if v_eff_meas == 0:
+        return 0.0
+    return power_meas_w * (v_eff_std / v_eff_meas)**3
 
-
-def normalize_all_profiles(profiles: List[Dict[str, Any]],
-                           alpha_std: float,
-                           z_ref: float,
-                           z_ro: float) -> List[Dict[str, Any]]:
-    """Apply shear normalization to all profiles.
+def rayleigh_pdf(v: float, v_mean: float) -> float:
+    """Rayleigh probability density function.
     
     Args:
-        profiles: List of profile data dictionaries.
-        alpha_std: Standard shear exponent.
-        z_ref: Reference height (m).
-        z_ro: Reel-out height (m).
+        v: Wind speed
+        v_mean: Mean wind speed
         
     Returns:
-        List of profiles with normalization results added.
+        Probability density at wind speed v
     """
-    print("\nApplying shear normalization...")
-    print(f"  Standard shear exponent: {alpha_std}")
-    print(f"  Reference height: {z_ref} m")
-    print(f"  Reel-out height: {z_ro} m")
+    # Scale parameter c from mean wind speed
+    c = v_mean / np.sqrt(np.pi / 2)
     
-    for profile in profiles:
-        norm_result = apply_shear_normalization(profile, alpha_std, z_ref, z_ro)
-        profile.update(norm_result)
-        
-        print(f"  Profile {profile['id']:2d}: "
-              f"alpha_meas = {profile['alpha_meas']:.4f}, "
-              f"mean correction = {norm_result['mean_correction']:.4f}")
+    if v < 0:
+        return 0.0
     
-    return profiles
+    return (v / c**2) * np.exp(-v**2 / (2 * c**2))
 
-
-# =============================================================================
-# STEP 3: PLOTTING
-# =============================================================================
-
-def plot_normalized_curves(profiles: List[Dict[str, Any]], 
-                           output_path: Path = None) -> None:
-    """Create subplot grid showing original and normalized power curves.
-    
-    Creates a 4x5 grid (20 subplots) with each profile's original and
-    shear-normalized power curves.
+def calculate_aep(wind_speeds: np.ndarray, powers: np.ndarray, 
+                 v_mean: float) -> float:
+    """Calculate Annual Energy Production using Rayleigh distribution.
     
     Args:
-        profiles: List of profile data with normalization results.
-        output_path: Optional path to save figure.
+        wind_speeds: Array of wind speeds (m/s)
+        powers: Array of power values (W)
+        v_mean: Mean wind speed for Rayleigh distribution
+        
+    Returns:
+        AEP in MWh
     """
-    print("\nGenerating plots...")
+    # Create fine wind speed grid for integration
+    v_min = 0.0
+    v_max = max(wind_speeds) + 5.0
+    v_grid = np.linspace(v_min, v_max, 1000)
     
-    fig, axes = plt.subplots(4, 5, figsize=(20, 16))
+    # Interpolate power curve to fine grid (extrapolate with boundary values)
+    power_grid = np.interp(v_grid, wind_speeds, powers, left=0.0, right=powers[-1])
+    
+    # Compute Rayleigh PDF at each point
+    pdf_grid = np.array([rayleigh_pdf(v, v_mean) for v in v_grid])
+    
+    # Integrate: AEP = integral(P(v) * f(v) dv) * hours_per_year
+    hours_per_year = 8760
+    average_power_w = np.trapz(power_grid * pdf_grid, v_grid)
+    aep_mwh = (average_power_w * hours_per_year) / 1e6
+    
+    return aep_mwh
+
+# =============================================================================
+# MAIN PROCESSING
+# =============================================================================
+
+def process_shear_normalization():
+    """Apply shear normalization to all power curves."""
+    
+    print("Loading power curves...")
+    data = load_power_curves(POWER_CURVES_PATH)
+    
+    altitudes_m = np.array(data['altitudes_m'])
+    n_profiles = len(data['power_curves'])
+    
+    print(f"Processing {n_profiles} wind profiles...")
+    
+    # Storage for plotting
+    all_original_curves = []
+    all_corrected_curves = []
+    wind_speeds_grid = []
+    
+    # Process each profile
+    for profile in data['power_curves']:
+        profile_id = profile['profile_id']
+        print(f"  Profile {profile_id}...")
+        
+        # Get normalized wind profile
+        u_norm = np.array(profile['wind_profile']['u_normalized'])
+        
+        # Storage for this profile's power curve
+        original_powers = []
+        corrected_powers = []
+        ref_wind_speeds = []
+        
+        # Process each wind speed point (only successful ones with time history)
+        for wind_point in profile['wind_speed_data']:
+            # Skip unsuccessful simulations
+            if not wind_point.get('success', False) or 'time_history' not in wind_point:
+                continue
+                
+            v_ref = wind_point['wind_speed_m_s']
+            ref_wind_speeds.append(v_ref)
+            
+            # Get actual wind profile: V(z) = V_ref * u_normalized(z)
+            wind_profile_meas = v_ref * u_norm
+            
+            # Get measured power from performance metrics
+            power_meas = wind_point['performance']['power']['average_cycle_power_w']
+            
+            # Get time history data
+            time_hist = wind_point['time_history']
+            time_s = np.array(time_hist['time_s'])
+            altitude_history = np.array(time_hist['altitude_m'])
+            reel_speed = np.array(time_hist['reel_speed_m_s'])
+            
+            original_powers.append(power_meas)
+            
+            # Step 3: Compute effective wind speed under measured conditions
+            v_eff_meas = compute_effective_wind_speed(
+                time_s, altitude_history, altitudes_m, wind_profile_meas,
+                reel_speed, USE_REEL_OUT_ONLY
+            )
+            
+            # Step 4: Create standardized profile and compute effective wind speed
+            wind_profile_std = create_standard_profile(
+                v_ref, altitudes_m, ALPHA_STD, Z_REF
+            )
+            v_eff_std = compute_effective_wind_speed(
+                time_s, altitude_history, altitudes_m, wind_profile_std,
+                reel_speed, USE_REEL_OUT_ONLY
+            )
+            
+            # Step 5: Apply power correction
+            power_corr = normalize_power(power_meas, v_eff_meas, v_eff_std)
+            corrected_powers.append(power_corr)
+        
+        all_original_curves.append((ref_wind_speeds, original_powers, profile_id))
+        all_corrected_curves.append((ref_wind_speeds, corrected_powers, profile_id))
+    
+    print("\nCalculating AEP for each profile...")
+    aep_original = []
+    aep_corrected = []
+    
+    for i in range(n_profiles):
+        ws, power_orig, pid = all_original_curves[i]
+        _, power_corr, _ = all_corrected_curves[i]
+        
+        aep_orig = calculate_aep(np.array(ws), np.array(power_orig), MEAN_WIND_SPEED_M_S)
+        aep_corr = calculate_aep(np.array(ws), np.array(power_corr), MEAN_WIND_SPEED_M_S)
+        
+        aep_original.append(aep_orig)
+        aep_corrected.append(aep_corr)
+        
+        print(f"  Profile {pid}: Original AEP = {aep_orig:.2f} MWh, Corrected AEP = {aep_corr:.2f} MWh")
+    
+    # Performance metrics
+    print("\n" + "="*70)
+    print("SHEAR NORMALIZATION PERFORMANCE METRICS")
+    print("="*70)
+    
+    aep_orig_array = np.array(aep_original)
+    aep_corr_array = np.array(aep_corrected)
+    
+    avg_original = np.mean(aep_orig_array)
+    avg_corrected = np.mean(aep_corr_array)
+    
+    std_original = np.std(aep_orig_array)
+    std_corrected = np.std(aep_corr_array)
+    
+    cv_original = (std_original / avg_original) * 100  # Coefficient of variation in %
+    cv_corrected = (std_corrected / avg_corrected) * 100
+    
+    mad_original = np.mean(np.abs(aep_orig_array - avg_original))  # Mean absolute deviation
+    mad_corrected = np.mean(np.abs(aep_corr_array - avg_corrected))
+    
+    reduction_std = ((std_original - std_corrected) / std_original) * 100
+    reduction_cv = ((cv_original - cv_corrected) / cv_original) * 100
+    reduction_mad = ((mad_original - mad_corrected) / mad_original) * 100
+    
+    print(f"\nOriginal AEP Statistics:")
+    print(f"  Average AEP:              {avg_original:.2f} MWh")
+    print(f"  Standard Deviation:       {std_original:.2f} MWh")
+    print(f"  Coefficient of Variation: {cv_original:.2f} %")
+    print(f"  Mean Absolute Deviation:  {mad_original:.2f} MWh")
+    
+    print(f"\nCorrected AEP Statistics:")
+    print(f"  Average AEP:              {avg_corrected:.2f} MWh")
+    print(f"  Standard Deviation:       {std_corrected:.2f} MWh")
+    print(f"  Coefficient of Variation: {cv_corrected:.2f} %")
+    print(f"  Mean Absolute Deviation:  {mad_corrected:.2f} MWh")
+    
+    print(f"\nReduction in Spread (Performance Improvement):")
+    print(f"  Standard Deviation:       {reduction_std:+.2f} %")
+    print(f"  Coefficient of Variation: {reduction_cv:+.2f} %")
+    print(f"  Mean Absolute Deviation:  {reduction_mad:+.2f} %")
+    
+    if reduction_std > 0:
+        print(f"\n✓ Shear normalization REDUCED AEP spread by {reduction_std:.1f}%")
+    else:
+        print(f"\n✗ Shear normalization INCREASED AEP spread by {abs(reduction_std):.1f}%")
+    
+    print("="*70 + "\n")
+    
+    print("\nGenerating comparison plots...")
+    plot_power_curve_comparison(all_original_curves, all_corrected_curves)
+    plot_all_curves_overlaid(all_original_curves, all_corrected_curves)
+    plot_aep_comparison(aep_original, aep_corrected, n_profiles)
+    
+    print("Done!")
+
+def plot_power_curve_comparison(original_curves: List, corrected_curves: List):
+    """Plot all power curves: original vs corrected for each profile.
+    
+    Args:
+        original_curves: List of (wind_speeds, powers, profile_id) tuples
+        corrected_curves: List of (wind_speeds, powers, profile_id) tuples
+    """
+    n_profiles = len(original_curves)
+    
+    # Create subplot grid (4 rows x 5 columns for 20 profiles)
+    fig, axes = plt.subplots(4, 5, figsize=(20, 12))
     axes = axes.flatten()
     
-    for i, (ax, profile) in enumerate(zip(axes, profiles)):
-        ref_speeds = profile['ref_wind_speeds']
-        powers_orig = profile['powers'] / 1000  # Convert to kW
-        powers_norm = profile['powers_normalized'] / 1000  # Convert to kW
+    # Plot each profile comparison
+    for i in range(n_profiles):
+        ws_orig, power_orig, pid = original_curves[i]
+        ws_corr, power_corr, _ = corrected_curves[i]
         
-        # Plot curves
-        ax.plot(ref_speeds, powers_orig, 'b-', linewidth=2, 
-                label='Original', alpha=0.7)
-        ax.plot(ref_speeds, powers_norm, 'r--', linewidth=2,
-                label='Normalized', alpha=0.7)
+        ax = axes[i]
         
-        # Formatting
-        ax.set_xlabel('Reference Wind Speed (m/s)', fontsize=8)
-        ax.set_ylabel('Power (kW)', fontsize=8)
+        # Plot original and corrected curves
+        ax.plot(ws_orig, np.array(power_orig)/1000, 'o-', 
+                label='Original', linewidth=2, markersize=4, color='C0')
+        ax.plot(ws_corr, np.array(power_corr)/1000, 's-', 
+                label='Corrected', linewidth=2, markersize=4, color='C1')
+        
+        ax.set_title(f'Profile {pid}', fontsize=10, fontweight='bold')
         ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=7, loc='lower right')
+        ax.legend(fontsize=8)
         
-        # Title with profile info
-        title = (f'Profile {profile["id"]} | '
-                f'α = {profile["alpha_meas"]:.3f} | '
-                f'p = {profile["probability"]:.3f}')
-        ax.set_title(title, fontsize=9, fontweight='bold')
-        
-        # Set consistent axis limits for comparison
-        ax.set_xlim([4, 25])
-        ax.set_ylim([0, 130])
-        
-        ax.tick_params(labelsize=7)
+        # Only add labels on edge plots
+        if i >= 15:  # Bottom row
+            ax.set_xlabel('Wind Speed [m/s]', fontsize=9)
+        if i % 5 == 0:  # Left column
+            ax.set_ylabel('Power [kW]', fontsize=9)
     
-    plt.suptitle(f'Shear Normalization: Original vs Normalized Power Curves\n'
-                 f'Standard α = {ALPHA_STD}, z_ref = {Z_REF} m, z_ro = {Z_RO} m',
-                 fontsize=14, fontweight='bold', y=0.995)
+    fig.suptitle(f'Shear Normalization Comparison (α_std = {ALPHA_STD})', 
+                 fontsize=16, fontweight='bold', y=0.995)
     
-    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    plt.tight_layout()
     
-    if output_path:
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"  Plot saved to: {output_path}")
-    else:
-        plt.show()
+    # Save plot
+    output_path = RESULTS_DIR / "shear_normalization_comparison.pdf"
+    plt.savefig(output_path, bbox_inches='tight')
+    print(f"Plot saved to: {output_path}")
     
     plt.close()
 
-
-# =============================================================================
-# STEP 4: SUMMARY STATISTICS
-# =============================================================================
-
-def print_summary_statistics(profiles: List[Dict[str, Any]]) -> None:
-    """Print summary statistics of shear coefficients and corrections.
+def plot_all_curves_overlaid(original_curves: List, corrected_curves: List):
+    """Plot all power curves overlaid: original (left) vs corrected (right).
     
     Args:
-        profiles: List of profile data with normalization results.
+        original_curves: List of (wind_speeds, powers, profile_id) tuples
+        corrected_curves: List of (wind_speeds, powers, profile_id) tuples
     """
-    print("\n" + "=" * 80)
-    print("SUMMARY STATISTICS")
-    print("=" * 80)
+    n_profiles = len(original_curves)
+    colors = plt.cm.tab20(np.linspace(0, 1, n_profiles))
     
-    alphas = np.array([p['alpha_meas'] for p in profiles])
-    corrections = np.array([p['mean_correction'] for p in profiles])
-    probabilities = np.array([p['probability'] for p in profiles])
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
     
-    print("\nShear Exponents (α_meas):")
-    print("-" * 80)
-    print(f"  Mean:           {np.mean(alphas):.4f}")
-    print(f"  Std Dev:        {np.std(alphas):.4f}")
-    print(f"  Minimum:        {np.min(alphas):.4f} (Profile {alphas.argmin() + 1})")
-    print(f"  Maximum:        {np.max(alphas):.4f} (Profile {alphas.argmax() + 1})")
-    print(f"  Standard α:     {ALPHA_STD:.4f}")
+    # Plot all original curves
+    for i, (ws, power, pid) in enumerate(original_curves):
+        ax1.plot(ws, np.array(power)/1000, color=colors[i], 
+                label=f'Profile {pid}', linewidth=1.5, alpha=0.7)
     
-    print("\nPower Correction Factors (mean across wind speeds):")
-    print("-" * 80)
-    print(f"  Mean:           {np.mean(corrections):.4f}")
-    print(f"  Std Dev:        {np.std(corrections):.4f}")
-    print(f"  Minimum:        {np.min(corrections):.4f} (Profile {corrections.argmin() + 1})")
-    print(f"  Maximum:        {np.max(corrections):.4f} (Profile {corrections.argmax() + 1})")
+    ax1.set_xlabel('Reference Wind Speed at 200 m [m/s]', fontsize=12)
+    ax1.set_ylabel('Average Cycle Power [kW]', fontsize=12)
+    ax1.set_title('Original Power Curves', fontsize=14, fontweight='bold')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, ncol=1)
     
-    print("\nRelative Correction Magnitude:")
-    print("-" * 80)
-    rel_corrections = np.abs(corrections - 1.0) * 100  # Deviation from 1.0 in %
-    print(f"  Mean abs deviation: {np.mean(rel_corrections):.2f}%")
-    print(f"  Max abs deviation:  {np.max(rel_corrections):.2f}%")
+    # Plot all corrected curves
+    for i, (ws, power, pid) in enumerate(corrected_curves):
+        ax2.plot(ws, np.array(power)/1000, color=colors[i], 
+                label=f'Profile {pid}', linewidth=1.5, alpha=0.7)
     
-    print("\nProfile Probabilities:")
-    print("-" * 80)
-    print(f"  Total probability:  {np.sum(probabilities):.4f}")
-    print(f"  Mean probability:   {np.mean(probabilities):.4f}")
-    print(f"  Min probability:    {np.min(probabilities):.4f} (Profile {probabilities.argmin() + 1})")
-    print(f"  Max probability:    {np.max(probabilities):.4f} (Profile {probabilities.argmax() + 1})")
+    ax2.set_xlabel('Reference Wind Speed at 200 m [m/s]', fontsize=12)
+    ax2.set_ylabel('Average Cycle Power [kW]', fontsize=12)
+    ax2.set_title(f'Shear-Normalized Power Curves (α_std = {ALPHA_STD})', 
+                 fontsize=14, fontweight='bold')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, ncol=1)
     
-    print("\nWeighted Statistics (by probability):")
-    print("-" * 80)
-    weighted_alpha = np.sum(alphas * probabilities) / np.sum(probabilities)
-    weighted_correction = np.sum(corrections * probabilities) / np.sum(probabilities)
-    print(f"  Weighted mean α:          {weighted_alpha:.4f}")
-    print(f"  Weighted mean correction: {weighted_correction:.4f}")
+    fig.suptitle('All Power Curves Comparison', fontsize=16, fontweight='bold', y=1.02)
+    
+    plt.tight_layout()
+    
+    # Save plot
+    output_path = RESULTS_DIR / "all_curves_overlaid.pdf"
+    plt.savefig(output_path, bbox_inches='tight')
+    print(f"Overlaid curves plot saved to: {output_path}")
+    
+    plt.close()
 
-
-def save_normalized_data(profiles: List[Dict[str, Any]], 
-                         output_path: Path) -> None:
-    """Save normalized power curves to YAML file.
+def plot_aep_comparison(aep_original: List[float], aep_corrected: List[float], 
+                       n_profiles: int):
+    """Plot AEP comparison for all profiles.
     
     Args:
-        profiles: List of profile data with normalization results.
-        output_path: Path to save YAML file.
+        aep_original: List of original AEP values in MWh
+        aep_corrected: List of corrected AEP values in MWh
+        n_profiles: Number of profiles
     """
-    print("\nSaving normalized data...")
+    fig, ax1 = plt.subplots(figsize=(16, 7))
     
-    output_data = {
-        'metadata': {
-            'description': 'Shear-normalized power curves',
-            'standard_alpha': ALPHA_STD,
-            'reference_height_m': Z_REF,
-            'reel_out_height_m': Z_RO,
-            'n_profiles': len(profiles),
-        },
-        'profiles': []
-    }
+    x = np.arange(n_profiles)
+    width = 0.35
     
-    for profile in profiles:
-        output_data['profiles'].append({
-            'profile_id': int(profile['id']),
-            'alpha_measured': float(profile['alpha_meas']),
-            'probability': float(profile['probability']),
-            'mean_correction_factor': float(profile['mean_correction']),
-            'reference_wind_speeds_m_s': profile['ref_wind_speeds'].tolist(),
-            'power_original_w': profile['powers'].tolist(),
-            'power_normalized_w': profile['powers_normalized'].tolist(),
-        })
+    # Convert to numpy arrays for calculations
+    aep_orig_array = np.array(aep_original)
+    aep_corr_array = np.array(aep_corrected)
     
-    with open(output_path, 'w') as f:
-        yaml.dump(output_data, f, default_flow_style=False, sort_keys=False)
+    # Calculate averages
+    avg_original = np.mean(aep_orig_array)
+    avg_corrected = np.mean(aep_corr_array)
     
-    print(f"  Saved to: {output_path}")
-
+    # Plot bars on primary axis
+    bars1 = ax1.bar(x - width/2, aep_original, width, label='Original', 
+                   color='C0', alpha=0.8)
+    bars2 = ax1.bar(x + width/2, aep_corrected, width, label='Corrected', 
+                   color='C1', alpha=0.8)
+    
+    # Add average lines
+    ax1.axhline(y=avg_original, color='C0', linestyle='--', linewidth=2, 
+               label=f'Original Avg = {avg_original:.2f} MWh', alpha=0.8)
+    ax1.axhline(y=avg_corrected, color='C1', linestyle='--', linewidth=2, 
+               label=f'Corrected Avg = {avg_corrected:.2f} MWh', alpha=0.8)
+    
+    ax1.set_xlabel('Wind Profile', fontsize=12)
+    ax1.set_ylabel('Annual Energy Production [MWh]', fontsize=12)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels([f'{i+1}' for i in range(n_profiles)])
+    ax1.grid(True, alpha=0.3, axis='y')
+    
+    # Create secondary y-axis for differences
+    ax2 = ax1.twinx()
+    
+    # Calculate differences from average
+    diff_original = aep_orig_array - avg_original
+    diff_corrected = aep_corr_array - avg_corrected
+    
+    # Plot differences as lines on secondary axis
+    ax2.plot(x, diff_original, 'o--', color='C0', linewidth=1.5, markersize=6,
+            label='Original - Avg', alpha=0.6)
+    ax2.plot(x, diff_corrected, 's--', color='C1', linewidth=1.5, markersize=6,
+            label='Corrected - Avg', alpha=0.6)
+    ax2.axhline(y=0, color='gray', linestyle='-', linewidth=1, alpha=0.5)
+    
+    ax2.set_ylabel('Difference from Average [MWh]', fontsize=12)
+    
+    # Combine legends
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=10, loc='upper left')
+    
+    ax1.set_title(f'AEP Comparison: Original vs Shear-Normalized Power Curves\n'
+                 f'(Rayleigh distribution, mean wind speed = {MEAN_WIND_SPEED_M_S} m/s at {Z_REF:.0f} m)', 
+                 fontsize=14, fontweight='bold')
+    
+    plt.tight_layout()
+    
+    # Save plot
+    output_path = RESULTS_DIR / "aep_comparison.pdf"
+    plt.savefig(output_path, bbox_inches='tight')
+    print(f"AEP plot saved to: {output_path}")
+    
+    plt.close()
 
 # =============================================================================
-# MAIN EXECUTION
+# SCRIPT ENTRY POINT
 # =============================================================================
-
-def main():
-    """Execute shear normalization analysis."""
-    print("=" * 80)
-    print("SHEAR NORMALIZATION FOR AWE POWER CURVES")
-    print("=" * 80)
-    
-    print(f"\nConfiguration:")
-    print(f"  Standard shear exponent (α_std): {ALPHA_STD}")
-    print(f"  Reference height (z_ref):         {Z_REF} m")
-    print(f"  Reel-out height (z_ro):           {Z_RO} m")
-    
-    # Check if input files exist
-    if not POWER_CURVES_PATH.exists():
-        print(f"\nERROR: Power curves file not found: {POWER_CURVES_PATH}")
-        return False
-    
-    if not WIND_RESOURCE_PATH.exists():
-        print(f"\nERROR: Wind resource file not found: {WIND_RESOURCE_PATH}")
-        return False
-    
-    # Step 1: Load and process data
-    power_data, wind_data = load_data()
-    profiles = extract_profile_data(wind_data, power_data)
-    
-    # Step 2: Apply shear normalization
-    profiles = normalize_all_profiles(profiles, ALPHA_STD, Z_REF, Z_RO)
-    
-    # Step 3: Create plots
-    plot_output_path = RESULTS_DIR / "shear_normalization_comparison.png"
-    plot_normalized_curves(profiles, plot_output_path)
-    
-    # Step 4: Print summary statistics
-    print_summary_statistics(profiles)
-    
-    # Save normalized data
-    data_output_path = RESULTS_DIR / "shear_normalized_power_curves.yml"
-    save_normalized_data(profiles, data_output_path)
-    
-    print("\n" + "=" * 80)
-    print("SHEAR NORMALIZATION COMPLETE")
-    print("=" * 80)
-    
-    return True
-
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    process_shear_normalization()
+
+
