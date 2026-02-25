@@ -2,9 +2,6 @@
 	path = src/awespa/vendor/wind-profile-clustering
 	url = https://github.com/jbredael/wind-profile-clustering-1.git
 	branch = add-era5-and-restructure
-[submodule "src/awespa/vendor/AWE_production_estimation"]
-	path = src/awespa/vendor/AWE_production_estimation
-	url = https://github.com/AndreaBertozzi/AWE_production_estimation.git
 [submodule "src/awespa/vendor/LuchsingerPowerModel"]
 	path = src/awespa/vendor/LuchsingerPowerModel
 	url = https://github.com/jbredael/LuchsingerPowerModel.git
