@@ -231,8 +231,8 @@ def process_shear_normalization():
             if not wind_point.get('success', False) or 'time_history' not in wind_point:
                 continue
             
-            # Get measured power from performance metrics
-            power_meas = wind_point['performance']['power']['average_cycle_power_w']
+            # Get measured reel-out power from performance metrics
+            power_meas = wind_point['performance']['power']['average_reel_out_power_w']
             
             # Skip negative or zero power values
             if power_meas <= 0:
@@ -381,13 +381,13 @@ def plot_power_curve_comparison(original_curves: List, corrected_curves: List):
         if i % 5 == 0:  # Left column
             ax.set_ylabel('Power [kW]', fontsize=9)
     
-    fig.suptitle(f'Shear Normalization Comparison (α_std = {ALPHA_STD})', 
+    fig.suptitle(f'Shear Normalization Comparison - Reel-Out Power Only (α_std = {ALPHA_STD})', 
                  fontsize=16, fontweight='bold', y=0.995)
     
     plt.tight_layout()
     
     # Save plot
-    output_path = RESULTS_DIR / "shear_normalization_comparison.pdf"
+    output_path = RESULTS_DIR / "shear_normalization_comparison_reel_out_only.pdf"
     plt.savefig(output_path, bbox_inches='tight')
     print(f"Plot saved to: {output_path}")
     
@@ -411,8 +411,8 @@ def plot_all_curves_overlaid(original_curves: List, corrected_curves: List):
                 label=f'Profile {pid}', linewidth=1.5, alpha=0.7)
     
     ax1.set_xlabel('Reference Wind Speed at 200 m [m/s]', fontsize=12)
-    ax1.set_ylabel('Average Cycle Power [kW]', fontsize=12)
-    ax1.set_title('Original Power Curves', fontsize=14, fontweight='bold')
+    ax1.set_ylabel('Average Reel-Out Power [kW]', fontsize=12)
+    ax1.set_title('Original Power Curves (Reel-Out Only)', fontsize=14, fontweight='bold')
     ax1.grid(True, alpha=0.3)
     ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, ncol=1)
     
@@ -422,18 +422,18 @@ def plot_all_curves_overlaid(original_curves: List, corrected_curves: List):
                 label=f'Profile {pid}', linewidth=1.5, alpha=0.7)
     
     ax2.set_xlabel('Reference Wind Speed at 200 m [m/s]', fontsize=12)
-    ax2.set_ylabel('Average Cycle Power [kW]', fontsize=12)
-    ax2.set_title(f'Shear-Normalized Power Curves (α_std = {ALPHA_STD})', 
+    ax2.set_ylabel('Average Reel-Out Power [kW]', fontsize=12)
+    ax2.set_title(f'Shear-Normalized Power Curves - Reel-Out Only (α_std = {ALPHA_STD})', 
                  fontsize=14, fontweight='bold')
     ax2.grid(True, alpha=0.3)
     ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8, ncol=1)
     
-    fig.suptitle('All Power Curves Comparison', fontsize=16, fontweight='bold', y=1.02)
+    fig.suptitle('All Power Curves Comparison - Reel-Out Power Only', fontsize=16, fontweight='bold', y=1.02)
     
     plt.tight_layout()
     
     # Save plot
-    output_path = RESULTS_DIR / "all_curves_overlaid.pdf"
+    output_path = RESULTS_DIR / "all_curves_overlaid_reel_out_only.pdf"
     plt.savefig(output_path, bbox_inches='tight')
     print(f"Overlaid curves plot saved to: {output_path}")
     
@@ -500,14 +500,14 @@ def plot_aep_comparison(aep_original: List[float], aep_corrected: List[float],
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, fontsize=10, loc='upper left')
     
-    ax1.set_title(f'AEP Comparison: Original vs Shear-Normalized Power Curves\n'
+    ax1.set_title(f'AEP Comparison: Original vs Shear-Normalized Power Curves (Reel-Out Only)\n'
                  f'(Rayleigh distribution, mean wind speed = {MEAN_WIND_SPEED_M_S} m/s at {Z_REF:.0f} m)', 
                  fontsize=14, fontweight='bold')
     
     plt.tight_layout()
     
     # Save plot
-    output_path = RESULTS_DIR / "aep_comparison.pdf"
+    output_path = RESULTS_DIR / "aep_comparison_reel_out_only.pdf"
     plt.savefig(output_path, bbox_inches='tight')
     print(f"AEP plot saved to: {output_path}")
     
