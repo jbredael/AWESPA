@@ -17,7 +17,7 @@ class PowerEstimationModel(ABC):
     def load_configuration(
         self, 
         system_path: Path,
-        simulation_settings_path: Path,
+        simulation_settings_path: Path = None,
         operational_constraints_path: Path = None
     ) -> None:
         """Load power model configuration from YAML files.
@@ -25,6 +25,7 @@ class PowerEstimationModel(ABC):
         Args:
             system_path: Path to system configuration YAML file.
             simulation_settings_path: Path to simulation settings YAML file.
+                May be None if model does not require simulation settings.
             operational_constraints_path: Path to operational constraints YAML file.
                 May be None if model does not require operational constraints.
         """
@@ -34,17 +35,23 @@ class PowerEstimationModel(ABC):
     def compute_power_curves(
         self,
         output_path: Path,
-        plot: bool = False
+        verbose: bool = False,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plot_path: Path = None
     ) -> None:
         """Compute power curves and optionally export/plot.
         
         This method calculates the power curve, exports to YAML if output_path
-        is provided, and generates plots if plot is True.
+        is provided, and generates plots if showplot or saveplot is True.
         
         Args:
             output_path: Path where power curve YAML will be written. If None,
                 no export is performed.
-            plot: Whether to generate and display plots.
+            verbose: Whether to print verbose output.
+            showplot: Whether to display plots.
+            saveplot: Whether to save plots to file.
+            plot_path: Path where plots will be saved if saveplot is True.
         
         Returns:
             None
@@ -56,7 +63,10 @@ class PowerEstimationModel(ABC):
         self,
         wind_speed: float,
         output_path: Path = None,
-        plot: bool = False
+        verbose: bool = False,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plot_path: Path = None
     ) -> float:
         """Calculate power output at a single wind speed.
         
@@ -64,7 +74,10 @@ class PowerEstimationModel(ABC):
             wind_speed: Wind speed in m/s.
             output_path: Path where results will be written. If None,
                 no export is performed.
-            plot: Whether to generate visualization for this wind speed.
+            verbose: Whether to print verbose output.
+            showplot: Whether to display plots for this wind speed.
+            saveplot: Whether to save plots for this wind speed to file.
+            plot_path: Path where plots will be saved if saveplot is True.
             
         Returns:
             Power output in W.
