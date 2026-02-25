@@ -2,33 +2,46 @@
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Any
+from typing import Optional
 
 
 class WindProfileModel(ABC):
     """Abstract base class for wind profile clustering models.
-    
+
     All wind profile models must inherit from this class and implement
     the required methods for loading configuration, clustering wind data,
     and exporting results to YAML format.
     """
-    
+
     @abstractmethod
     def load_from_yaml(self, config_path: Path) -> None:
         """Load configuration parameters from a YAML file.
-        
-        :param config_path: Path to the YAML configuration file
-        :type config_path: Path
+
+        Args:
+            config_path (Path): Path to the YAML configuration file.
         """
         pass
-    
+
     @abstractmethod
-    def cluster(self, data_path: Path, output_path: Path) -> None:
+    def cluster(
+        self,
+        data_path: Path,
+        output_path: Path,
+        verbose: bool = False,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plotpath: Optional[Path] = None,) -> None:
         """Perform wind profile clustering on the input data.
-        
-        :param data_path: Path to the wind data directory
-        :type data_path: Path
-        :param output_path: Path where output YAML file will be written
-        :type output_path: Path
+
+        Args:
+            data_path (Path): Path to the wind data directory.
+            output_path (Path): Path where output YAML file will be written.
+            verbose (bool): If True, print progress and diagnostic information.
+                Defaults to False.
+            showplot (bool): If True, display plots during clustering.
+                Defaults to False.
+            saveplot (bool): If True, save plots to disk. Defaults to False.
+            plotpath (Optional[Path]): Directory path where plots are saved.
+                Required if saveplot is True. Defaults to None.
         """
         pass

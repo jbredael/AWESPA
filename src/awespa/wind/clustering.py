@@ -3,6 +3,7 @@
 import sys
 import yaml
 import numpy as np
+import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -17,12 +18,14 @@ try:
     from wind_profile_clustering.clustering import perform_clustering_analysis
     from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities
     from wind_profile_clustering.read_data.era5 import read_data as read_era5_data
+    from wind_profile_clustering.plotting import plot_all_results
 except ImportError as e:
     # Handle import errors gracefully during development
     print(f"Warning: Could not import vendor functions: {e}")
     perform_clustering_analysis = None
     export_wind_profile_shapes_and_probabilities = None
     read_era5_data = None
+    plot_all_results = None
 
 
 class WindProfileClusteringModel(WindProfileModel):
@@ -69,17 +72,32 @@ class WindProfileClusteringModel(WindProfileModel):
             self.altitudeRange = tuple(dataConfig.get('altitude_range', self.altitudeRange))
             self.years = tuple(dataConfig.get('years', self.years))
     
-    def cluster(self, dataPath: Path, outputPath: Path) -> None:
+    def cluster(
+        self,
+        dataPath: Path,
+        outputPath: Path,
+        verbose: bool = False,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plotpath: Optional[Path] = None,
+    ) -> None:
         """Perform wind profile clustering on the input data.
-        
+
         Args:
             dataPath (Path): Path to the wind data directory.
             outputPath (Path): Path where output YAML file will be written.
+            verbose (bool): If True, print progress and diagnostic information.
+                Defaults to False.
+            showplot (bool): If True, display plots after clustering.
+                Defaults to False.
+            saveplot (bool): If True, save plots to disk. Defaults to False.
+            plotpath (Optional[Path]): Directory where plots are saved.
+                Required if saveplot is True. Defaults to None.
         """
         # Check if vendor functions are available
         if perform_clustering_analysis is None:
             raise ImportError("Vendor clustering functions not available")
-            
+
         # Load raw wind data
         if self.dataSource.lower() == 'era5':
             config = {
@@ -88,17 +106,20 @@ class WindProfileClusteringModel(WindProfileModel):
                 'altitude_range': self.altitudeRange,
                 'years': self.years
             }
-            print(f"Loading ERA5 data from {config['data_dir']}...")
+            if verbose:
+                print(f"Loading ERA5 data from {config['data_dir']}...")
             rawData = read_era5_data(config)
         else:
             raise NotImplementedError(f"Data source '{self.dataSource}' not yet implemented")
-        
+
         # Perform clustering analysis using vendor function
-        print(f"Performing wind profile clustering with {self.nClusters} clusters...")
+        if verbose:
+            print(f"Performing wind profile clustering with {self.nClusters} clusters...")
         results = perform_clustering_analysis(rawData, self.nClusters, ref_height=self.refHeight)
         
         # Extract results
         processedDataFull = results['processedDataFull']
+        processedData = results['processedData']
         self.clusteringResults = results['clusteringResults']
         labelsFull = results['labelsFull']
         frequencyClusters = results['frequencyClusters']
@@ -144,33 +165,47 @@ class WindProfileClusteringModel(WindProfileModel):
             nWindSpeedBins=self.nWindSpeedBins,
             metadata=metadata
         )
-        
-        print(f"Wind profile clustering results exported to {outputPath}")
+
+        if verbose:
+            print(f"Wind profile clustering results exported to {outputPath}")
+
+        # Plotting
+        if showplot or saveplot:
+            if plot_all_results is None:
+                raise ImportError("Vendor plotting functions not available")
+
+            fig_nums_before = set(plt.get_fignums())
+            plot_all_results(
+                processed_data=processedData,
+                res=self.clusteringResults,
+                processed_data_full=processedDataFull,
+                labels_full=labelsFull,
+                frequency_clusters_full=frequencyClusters,
+                n_clusters=self.nClusters,
+                savePlots=False,
+            )
+            new_figs = [plt.figure(n) for n in plt.get_fignums() if n not in fig_nums_before]
+
+            if saveplot:
+                if plotpath is None:
+                    raise ValueError("plotpath must be provided when saveplot is True")
+                plotpath = Path(plotpath)
+                plotpath.mkdir(parents=True, exist_ok=True)
+                plot_names = [
+                    "wind_profile_shapes.pdf",
+                    "cluster_patterns.pdf",
+                    "pc_projection.pdf",
+                    "cluster_frequencies_comparison.pdf",
+                ]
+                for fig, name in zip(new_figs, plot_names):
+                    fig_file = plotpath / name
+                    fig.savefig(fig_file, bbox_inches='tight')
+                    if verbose:
+                        print(f"Saved: {fig_file}")
+
+            if showplot:
+                plt.show()
+            else:
+                for fig in new_figs:
+                    plt.close(fig)
     
-    def get_cluster_frequencies(self) -> np.ndarray:
-        """Get the frequency of each cluster as percentage of total samples.
-        
-        Returns:
-            np.ndarray: Array of cluster frequencies.
-            
-        Raises:
-            ValueError: If clustering has not been performed yet.
-        """
-        if self.clusteringResults is None:
-            raise ValueError("No clustering results available. Run cluster() first.")
-        
-        return self.clusteringResults['frequency_clusters']
-    
-    def get_cluster_profiles(self) -> Dict[str, np.ndarray]:
-        """Get the representative wind profiles for each cluster.
-        
-        Returns:
-            Dict[str, np.ndarray]: Dictionary with 'parallel' and 'perpendicular' profile arrays.
-            
-        Raises:
-            ValueError: If clustering has not been performed yet.
-        """
-        if self.clusteringResults is None:
-            raise ValueError("No clustering results available. Run cluster() first.")
-        
-        return self.clusteringResults['clusters_feature']
