@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Run the Inertia-Free QSM power model via the AWESPA wrapper.
+
+Demonstrates both direct simulation and single-wind-speed calculation
+using the InertiaFreeQSMPowerModel wrapper class.
+
+Usage:
+    python scripts/run_inertiafree_qsm.py
+"""
+
+import sys
+from pathlib import Path
+
+# Add src to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
+
+from awespa.power.ineritafree_qsm_power import InertiaFreeQSMPowerModel
+
+
+def main():
+    """Run InertiaFree-QSM model and export power curves."""
+    # ---- paths -----------------------------------------------------------
+    configDir = PROJECT_ROOT / "config"
+    systemPath = configDir / "kitepower V3_20.yml"
+    simulationSettingsPath = configDir / "inertiafree_qsm_simulation_settings.yml"
+    windResourcePath = configDir / "wind_resource.yml"
+
+    resultsDir = PROJECT_ROOT / "results"
+    resultsDir.mkdir(parents=True, exist_ok=True)
+    outputDirect = resultsDir / "power_curves_direct_simulation.yml"
+
+    # ---- initialise and load model ---------------------------------------
+    model = InertiaFreeQSMPowerModel()
+
+    model.load_configuration(
+        system_path=systemPath,
+        simulation_settings_path=simulationSettingsPath,
+        wind_resource_path=windResourcePath,
+    )
+
+    # ---- single wind speed test ------------------------------------------
+    print("\n" + "=" * 60)
+    print("SINGLE WIND SPEED TEST (direct)")
+    print("=" * 60)
+    power = model.calculate_power_at_wind_speed(
+        wind_speed=10.0,
+        method="direct",
+        cluster_id=1,
+        verbose=True,
+    )
+
+    # ---- full power curve (direct simulation) ----------------------------
+    print("\n" + "=" * 60)
+    print("FULL POWER CURVE – DIRECT SIMULATION")
+    print("=" * 60)
+    data = model.compute_power_curves(
+        output_path=outputDirect,
+        method="direct",
+        verbose=True,
+        showplot=True,
+        saveplot=True,
+    )
+
+    # ---- summary ---------------------------------------------------------
+    print("\n" + "=" * 60)
+    print("POWER CURVE GENERATION COMPLETE")
+    print("=" * 60)
+    print(f"\n  Direct simulation output: {outputDirect}")
+    print("\nAll done!")
+
+
+if __name__ == "__main__":
+    main()
