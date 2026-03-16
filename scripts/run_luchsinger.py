@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Simple script to run Luchsinger power model and plot results.
+"""Run the Luchsinger power model via the AWESPA wrapper.
+
+Demonstrates both direct single-wind-speed calculation and full power curve
+generation using the LuchsingerPowerModel wrapper class.
 
 Usage:
     python scripts/run_luchsinger.py
@@ -16,47 +19,53 @@ from awespa.power.luchsinger_power import LuchsingerPowerModel
 
 
 def main():
-    """Run Luchsinger model and plot."""
-    # Define config paths
-    config_dir = PROJECT_ROOT / "config" / "meridional_case_1"
-    system_path = config_dir / "soft_kite_pumping_ground_gen_system.yml"
-    settings_path = config_dir / "Lucsinger_simulation_settings_config.yml"
-    
-    # Define wind resource and results paths
-    results_dir = PROJECT_ROOT / "results"
-    wind_resource_path = results_dir / "shear_gaming" / "wind_resource.yml"
-    results_dir.mkdir(parents=True, exist_ok=True)
-    output_yaml = results_dir / "luchsinger_power_curves.yml"
-    
-    # Initialize and load model
+    """Run Luchsinger model and export power curves."""
+    # ---- paths -----------------------------------------------------------
+    configDir = PROJECT_ROOT / "config"
+    systemPath = configDir / "kitepower V3_20.yml"
+    simulationSettingsPath = configDir /"Luchsinger_simulation_settings_config.yml"
+    windResourcePath = configDir / "wind_resource6.yml"
+
+    resultsDir = PROJECT_ROOT / "results"
+    resultsDir.mkdir(parents=True, exist_ok=True)
+    outputPath = resultsDir / "luchsinger_power_curves.yml"
+
+    # ---- initialise and load model ---------------------------------------
     model = LuchsingerPowerModel()
-    
+
     model.load_configuration(
-        systemPath=system_path,
-        simulationSettingsPath=settings_path,
-        operationalConstraintsPath=None,
-        windResourcePath=wind_resource_path
+        system_path=systemPath,
+        simulation_settings_path=simulationSettingsPath,
+        wind_resource_path=windResourcePath,
     )
 
-    # Test single wind speed calculation
-    print("Testing single wind speed calculation:")
-    model.calculate_power_at_wind_speed(windSpeed=12.0)
-    
-    # Compute power curves and export
-    print("\nComputing power curves and exporting to YAML...")
-    model.compute_power_curves(outputPath=output_yaml)
-    
-    # Generate plots using wrapper method
-    print("\nGenerating plots...")
-    try:
-        model.plot_power_curves(powerCurvePath=output_yaml, outputDir=results_dir)
-        print("\n" + "="*60)
-        print("Analysis complete! Plots are displayed and saved.")
-        print("="*60)
-    except Exception as e:
-        print(f"Warning: Could not generate plots: {e}")
-        import traceback
-        traceback.print_exc()
+    # # ---- single wind speed test ------------------------------------------
+    # print("\n" + "=" * 60)
+    # print("SINGLE WIND SPEED TEST (cluster 1)")
+    # print("=" * 60)
+    # power = model.calculate_power_at_wind_speed(
+    #     wind_speed=10.0,
+    #     cluster_id=1,
+    #     verbose=True,
+    # )
+
+    # ---- full power curve ------------------------------------------------
+    print("\n" + "=" * 60)
+    print("FULL POWER CURVE GENERATION")
+    print("=" * 60)
+    data = model.compute_power_curves(
+        output_path=outputPath,
+        verbose=True,
+        showplot=True,
+        saveplot=True,
+    )
+
+    # ---- summary ---------------------------------------------------------
+    print("\n" + "=" * 60)
+    print("POWER CURVE GENERATION COMPLETE")
+    print("=" * 60)
+    print(f"\n  Output: {outputPath}")
+    print("\nAll done!")
 
 
 if __name__ == "__main__":

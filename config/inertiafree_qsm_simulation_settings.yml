@@ -60,7 +60,7 @@ optimization:
   # Optimizer bounds (where not derived from system properties)
   bounds:
     # Elevation angle bounds [degrees]
-    elevation_angle_min: 20.0
+    elevation_angle_min: 30.0
     elevation_angle_max: 60.0
     # Tether length bounds as fractions of max_tether_length
     tether_length_diff_fraction_min: 0.3

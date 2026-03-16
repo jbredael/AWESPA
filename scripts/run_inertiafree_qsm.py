@@ -24,7 +24,7 @@ def main():
     configDir = PROJECT_ROOT / "config"
     systemPath = configDir / "kitepower V3_20.yml"
     simulationSettingsPath = configDir / "inertiafree_qsm_simulation_settings.yml"
-    windResourcePath = configDir / "wind_resource.yml"
+    windResourcePath = configDir / "wind_resource6.yml"
 
     resultsDir = PROJECT_ROOT / "results"
     resultsDir.mkdir(parents=True, exist_ok=True)
@@ -39,16 +39,16 @@ def main():
         wind_resource_path=windResourcePath,
     )
 
-    # ---- single wind speed test ------------------------------------------
-    print("\n" + "=" * 60)
-    print("SINGLE WIND SPEED TEST (direct)")
-    print("=" * 60)
-    power = model.calculate_power_at_wind_speed(
-        wind_speed=10.0,
-        method="direct",
-        cluster_id=1,
-        verbose=True,
-    )
+    # # ---- single wind speed test ------------------------------------------
+    # print("\n" + "=" * 60)
+    # print("SINGLE WIND SPEED TEST (direct)")
+    # print("=" * 60)
+    # power = model.calculate_power_at_wind_speed(
+    #     wind_speed=10.0,
+    #     method="direct",
+    #     cluster_id=1,
+    #     verbose=True,
+    # )
 
     # ---- full power curve (direct simulation) ----------------------------
     print("\n" + "=" * 60)
@@ -56,7 +56,7 @@ def main():
     print("=" * 60)
     data = model.compute_power_curves(
         output_path=outputDirect,
-        method="direct",
+        method="optimization",
         verbose=True,
         showplot=True,
         saveplot=True,

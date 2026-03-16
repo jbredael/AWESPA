@@ -1,13 +1,14 @@
 """Luchsinger power estimation wrapper for the vendored LuchsingerModel repository.
 
 This wrapper adapts the vendored Luchsinger power model to the AWESPA modular
-architecture. The underlying model accepts awesIO format configuration files directly.
+architecture. The underlying model accepts awesIO format configuration files
+directly and computes power curves using wind shear profiles from a wind resource.
 """
 
 import sys
 import numpy as np
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from .base import PowerEstimationModel
 
@@ -15,203 +16,295 @@ from .base import PowerEstimationModel
 VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "LuchsingerPowerModel"
 sys.path.insert(0, str(VENDOR_PATH))
 
-# Import vendor LuchsingerPowerModel
 try:
-    from src.power_luchsinger.power_model import PowerModel, load_wind_shear_profiles # type: ignore
+    from src.power_luchsinger.power_model import PowerModel  # type: ignore
 except ImportError as e:
     print(f"Import error for LuchsingerPowerModel: {e}")
     PowerModel = None
-    load_wind_shear_profiles = None
 
 
 class LuchsingerPowerModel(PowerEstimationModel):
     """Wrapper for the Luchsinger pumping kite power model.
-    
+
     This wrapper adapts the vendored Luchsinger power model to the AWESPA
-    modular architecture. The model accepts awesIO format configuration files.
+    modular architecture. The model requires three configuration files in
+    awesIO format:
+
+    - System configuration (kite, tether, ground station properties)
+    - Wind resource (altitude profiles, clusters, probability matrix)
+    - Simulation settings (operational envelope, atmosphere parameters)
     """
-    
+
     def __init__(self):
         """Initialize the Luchsinger power estimation model."""
-        self.powerModel: Optional[PowerModel] = None # type: ignore
-        self.windShearData: Optional[Dict[str, Any]] = None
-        
+        self.model: Optional[Any] = None
+        self.systemPath: Optional[Path] = None
+        self.windResourcePath: Optional[Path] = None
+        self.simulationSettingsPath: Optional[Path] = None
+
     def load_configuration(
-        self, 
-        systemPath: Path,
-        simulationSettingsPath: Path,
-        operationalConstraintsPath: Path = None,
-        windResourcePath: Path = None
+        self,
+        system_path: Path,
+        simulation_settings_path: Path,
+        operational_constraints_path: Path = None,
+        wind_resource_path: Path = None,
     ) -> None:
         """Load power model configuration from YAML files.
-        
+
+        Creates a ``PowerModel`` instance from the vendored Luchsinger package
+        using the provided configuration files.
+
         Args:
-            systemPath (Path): Path to the combined system configuration YAML file
-                (awesIO format containing wing, tether, ground_station components).
-            simulationSettingsPath (Path): Path to simulation settings YAML file
-                containing operational and atmosphere parameters.
-            operationalConstraintsPath (Path): Not used by Luchsinger model. Defaults to None.
-            windResourcePath (Path): Path to wind resource YAML file containing
-                wind shear profiles and clusters. If None, uniform wind profile
-                is used. Defaults to None.
+            system_path (Path): Path to the system configuration YAML file
+                (awesIO format with wing, tether, ground_station components).
+            simulation_settings_path (Path): Path to simulation settings YAML
+                file containing operational envelope and atmosphere parameters.
+            operational_constraints_path (Path): Not used by this model.
+                Defaults to None.
+            wind_resource_path (Path): Path to wind resource YAML file
+                containing altitude profiles, clusters, and probability matrix.
+
+        Raises:
+            ImportError: If the vendored PowerModel cannot be imported.
+            FileNotFoundError: If any required file does not exist.
         """
         if PowerModel is None:
-            raise ImportError("Luchsinger PowerModel could not be imported")
-        
-        self.powerModel = PowerModel.from_yaml(
-            yamlPath=systemPath,
-            simulationSettingsPath=simulationSettingsPath,
-            validate=False
+            raise ImportError(
+                "PowerModel could not be imported from LuchsingerPowerModel"
+            )
+
+        self.systemPath = Path(system_path)
+        self.simulationSettingsPath = Path(simulation_settings_path)
+        self.windResourcePath = Path(wind_resource_path) if wind_resource_path else None
+
+        # Validate that required files exist
+        for label, path in [
+            ("System config", self.systemPath),
+            ("Simulation settings", self.simulationSettingsPath),
+        ]:
+            if not path.exists():
+                raise FileNotFoundError(f"{label} file not found: {path}")
+
+        if self.windResourcePath is None:
+            raise ValueError(
+                "wind_resource_path is required for the Luchsinger model."
+            )
+        if not self.windResourcePath.exists():
+            raise FileNotFoundError(
+                f"Wind resource file not found: {self.windResourcePath}"
+            )
+
+        # Create the PowerModel (loads all config internally)
+        self.model = PowerModel(
+            system_config_path=self.systemPath,
+            wind_resource_path=self.windResourcePath,
+            simulation_settings_path=self.simulationSettingsPath,
+            validate_file=False,
         )
-        
-        # Load wind resource if provided
-        if windResourcePath is not None:
-            if load_wind_shear_profiles is None:
-                raise ImportError("load_wind_shear_profiles could not be imported")
-            
-            windResourcePath = Path(windResourcePath)
-            if not windResourcePath.exists():
-                raise FileNotFoundError(f"Wind resource file not found: {windResourcePath}")
-            
-            self.windShearData = load_wind_shear_profiles(windResourcePath)
-            print(f"Loaded wind resource with {self.windShearData['n_clusters']} clusters from: {windResourcePath.name}")
-        else:
-            self.windShearData = None
-            print("No wind resource provided, using uniform wind profile")
-    
+
+        print(f"Loaded Luchsinger configuration:")
+        print(f"  Wing area:              {self.model.wingArea:.1f} m\u00b2")
+        print(f"  Nominal tether force:   {self.model.nominalTetherForce:.0f} N")
+        print(f"  Nominal generator power:{self.model.nominalGeneratorPower / 1000:.1f} kW")
+        print(f"  Cut-in wind speed:      {self.model.cutInWindSpeed:.1f} m/s")
+        print(f"  Cut-out wind speed:     {self.model.cutOutWindSpeed:.1f} m/s")
+        print(
+            f"  Number of wind clusters:"
+            f" {self.model.wind_resource['n_clusters']}"
+        )
+
     def compute_power_curves(
         self,
-        outputPath: Path = None
+        output_path: Path = None,
+        wind_speeds: Optional[np.ndarray] = None,
+        verbose: bool = True,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plot_path: Path = None,
     ) -> Dict[str, Any]:
-        """Compute power curves and optionally export.
-        
-        If a wind resource was loaded, this computes power curves for each
-        wind shear profile/cluster. Otherwise, computes a single power curve
-        with uniform wind profile.
-        
+        """Compute power curves for all wind shear profiles and optionally export.
+
         Args:
-            outputPath (Path): Path where power curve YAML will be written. If None,
-                no export is performed. Defaults to None.
-        
+            output_path (Path): Path where power curve YAML will be written.
+                If None, no export is performed. Defaults to None.
+            wind_speeds (np.ndarray): Custom wind speeds to evaluate [m/s].
+                If None, uses a linearly-spaced array between cut-in and
+                cut-out from simulation settings. Defaults to None.
+            verbose (bool): Whether to print a summary after generation.
+                Defaults to True.
+            showplot (bool): Whether to display plots after generation.
+                Defaults to False.
+            saveplot (bool): Whether to save plots to file alongside the
+                YAML output. Requires ``output_path``. Defaults to False.
+            plot_path (Path): Not used directly; plots are saved alongside
+                ``output_path`` when ``saveplot`` is True. Defaults to None.
+
         Returns:
-            dict: Power curve data (structure depends on whether wind shear is used).
-        
-        Note:
-            For plotting, use the vendor's plotting.py script directly on the exported data.
+            dict: Power curve data with keys ``'reference_height_m'``,
+                ``'operational_altitude_m'``, ``'altitudes'``, and
+                ``'profiles'``.
+
+        Raises:
+            ValueError: If model is not initialized.
         """
-        if self.powerModel is None:
-            raise ValueError("Power model not initialized. Call load_configuration first.")
-        
-        # Compute power curves with 500 points
-        numPoints = 500
-        
-        if self.windShearData is not None:
-            # Compute power curves with wind shear profiles
-            print(f"Computing power curves with wind shear ({self.windShearData['n_clusters']} profiles)...")
-            data = self.powerModel.generate_power_curves_with_shear(
-                wind_shear_data=self.windShearData,
-                numPoints=numPoints
+        if self.model is None:
+            raise ValueError(
+                "Power model not initialized. Call load_configuration first."
             )
-        else:
-            # Compute single power curve with uniform wind profile
-            print("Computing power curve with uniform wind profile...")
-            data = self.powerModel.generate_power_curve(numPoints=numPoints)
-        
-        # Export to YAML if output path provided
-        if outputPath is not None:
-            self.powerModel.export_power_curves_awesio(
-                data=data,
-                output_path=outputPath,
-                validate=False
-            )
-            print(f"Power curve exported to: {outputPath}")
-        
+
+        nClusters = self.model.wind_resource["n_clusters"]
+        print(f"Computing Luchsinger power curves ({nClusters} wind profile(s))...")
+
+        data = self.model.generate_power_curves(
+            wind_speeds=wind_speeds,
+            output_path=output_path,
+            verbose=verbose,
+            show_plot=showplot,
+            save_plot=saveplot,
+            validate_file=False,
+        )
+
         return data
-    
+
     def calculate_power_at_wind_speed(
         self,
-        windSpeed: float,
-        outputPath: Path = None
+        wind_speed: float,
+        cluster_id: int = 1,
+        output_path: Path = None,
+        verbose: bool = True,
+        showplot: bool = False,
+        saveplot: bool = False,
+        plot_path: Path = None,
     ) -> float:
         """Calculate power output at a single wind speed.
-        
+
+        Uses the first matching wind cluster profile to derive the wind shear
+        and calls the Luchsinger model for a single operating point.
+
         Args:
-            windSpeed (float): Wind speed in m/s.
-            outputPath (Path): Path where results will be written. If None,
-                no export is performed. Defaults to None.
-            
+            wind_speed (float): Wind speed at reference height [m/s].
+            cluster_id (int): Cluster ID (1-indexed) for wind profile
+                selection. Defaults to 1.
+            output_path (Path): Not used; Luchsinger model does not support
+                single-point export. Defaults to None.
+            verbose (bool): Whether to print the result. Defaults to True.
+            showplot (bool): Not used. Defaults to False.
+            saveplot (bool): Not used. Defaults to False.
+            plot_path (Path): Not used. Defaults to None.
+
         Returns:
-            float: Power output in W.
+            float: Average cycle power output [W].
+
+        Raises:
+            ValueError: If model is not initialized or cluster ID is not found.
         """
-        if self.powerModel is None:
-            raise ValueError("Power model not initialized. Call load_configuration first.")
-        
-        # Calculate power at single wind speed
-        result = self.powerModel.calculate_power(windSpeed=windSpeed)
-        power = result['cyclePower']
-        
-        # Print the result
-        print(f"\nPower at {windSpeed:.1f} m/s: {power:.2f} W ({power/1000:.2f} kW)")
-        
-        # Export if requested (not yet implemented)
-        if outputPath is not None:
-            print("Note: Functionality to export results from single wind speed does not exist yet.")
-        
-        return power
-    
+        if self.model is None:
+            raise ValueError(
+                "Power model not initialized. Call load_configuration first."
+            )
+
+        windResource = self.model.wind_resource
+        profiles = windResource["profiles"]
+        referenceHeight = windResource["reference_height_m"]
+
+        # Find the requested cluster profile
+        clusterProfile = next(
+            (p for p in profiles if p["id"] == cluster_id), None
+        )
+        if clusterProfile is None:
+            raise ValueError(
+                f"Cluster ID {cluster_id} not found in wind resource "
+                f"(available: {[p['id'] for p in profiles]})"
+            )
+
+        windProfile = {
+            "altitudes": windResource["altitudes"],
+            "u_normalized": clusterProfile["u_normalized"],
+        }
+
+        # Recompute nominal wind speeds for this profile before querying power
+        self.model._compute_nominal_wind_speeds_with_shear(
+            windProfile, referenceHeight
+        )
+
+        result = self.model.calculate_power(
+            windSpeed=wind_speed,
+            wind_profile=windProfile,
+            reference_height_m=referenceHeight,
+        )
+
+        power = result["cyclePower"]
+
+        if verbose:
+            print(
+                f"\nPower at {wind_speed:.1f} m/s (cluster {cluster_id}): "
+                f"{power:.2f} W ({power / 1000:.2f} kW)"
+            )
+
+        if output_path is not None:
+            print(
+                "Note: single wind speed export is not supported by the "
+                "Luchsinger model."
+            )
+
+        return float(power)
+
     def plot_power_curves(
         self,
-        powerCurvePath: Path,
-        outputDir: Path = None
+        power_curve_path: Path,
+        output_dir: Path = None,
     ) -> None:
-        """Plot power curves using vendor plotting functions.
-        
-        This method uses the vendor's plotting scripts to visualize power curve
-        data that has been exported to a YAML file.
-        
+        """Plot power curves using the vendor's plotting functions.
+
+        Loads the exported YAML and calls the vendor's
+        ``plot_comprehensive_analysis`` visualisation.
+
         Args:
-            powerCurvePath (Path): Path to the power curves YAML file to plot.
-            outputDir (Path): Directory where plot images will be saved. If None,
-                plots are saved in the same directory as powerCurvePath. Defaults to None.
-        
+            power_curve_path (Path): Path to the exported power curves YAML.
+            output_dir (Path): Directory where plot files will be saved.
+                If None, plots are saved alongside ``power_curve_path``.
+                Defaults to None.
+
         Raises:
-            FileNotFoundError: If power curves file doesn't exist.
+            FileNotFoundError: If the power curves file does not exist.
             ImportError: If vendor plotting functions cannot be imported.
         """
-        # Import vendor plotting functions
         try:
-            from scripts.plot_power_curves import plot_all_power_curves, plot_wind_shear_profiles, load_power_curves # type: ignore
+            from src.power_luchsinger.plotting import (  # type: ignore
+                plot_comprehensive_analysis,
+                extract_model_params,
+            )
         except ImportError as e:
-            raise ImportError(f"Could not import vendor plotting functions: {e}")
-        
-        # Check if power curves file exists
-        powerCurvePath = Path(powerCurvePath)
+            raise ImportError(
+                f"Could not import vendor plotting functions: {e}"
+            )
+
+        powerCurvePath = Path(power_curve_path)
         if not powerCurvePath.exists():
-            raise FileNotFoundError(f"Power curves file not found: {powerCurvePath}")
-        
-        # Set output directory
-        if outputDir is None:
+            raise FileNotFoundError(
+                f"Power curves file not found: {powerCurvePath}"
+            )
+
+        if output_dir is None:
             outputDir = powerCurvePath.parent
         else:
-            outputDir = Path(outputDir)
+            outputDir = Path(output_dir)
             outputDir.mkdir(parents=True, exist_ok=True)
-        
-        # Load power curve data
-        print(f"Loading power curves from: {powerCurvePath.name}")
-        data = load_power_curves(powerCurvePath)
-        
-        # Create power curves comparison plot
-        print("Creating power curves comparison plot...")
-        output_path_curves = outputDir / "all_power_curves.png"
-        plot_all_power_curves(data, output_path_curves)
-        
-        # Create wind shear profiles plot (optional, may fail if metadata missing)
-        try:
-            print("Creating wind shear profiles plot...")
-            output_path_shear = outputDir / "wind_shear_profiles.png"
-            plot_wind_shear_profiles(data, output_path_shear)
-        except KeyError:
-            print("  Note: Wind shear profile plot requires additional metadata (skipped)")
-        
-        print(f"\nPlots generated and saved to: {outputDir}")
+
+        savePath = str(outputDir / "power_curve_analysis.pdf")
+
+        print(f"Generating power curve plot from: {powerCurvePath.name}")
+
+        # Re-run power curves to get data object (vendor plotter requires dict,
+        # not the YAML path) - use cached model
+        data = self.compute_power_curves(verbose=False)
+
+        plot_comprehensive_analysis(
+            data,
+            extract_model_params(self.model),
+            save_path=savePath,
+            show=True,
+        )
+
+        print(f"Plot saved to: {savePath}")
 

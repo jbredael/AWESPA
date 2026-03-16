@@ -27,7 +27,7 @@ def main():
     config_path = PROJECT_ROOT / "config" / "wind_clustering_config.yml"
     data_path = PROJECT_ROOT / "data"
     results_path = PROJECT_ROOT / "results"
-    output_file = results_path / "wind_resource.yml"
+    output_file = results_path / "wind_resource6.yml"
 
     results_path.mkdir(exist_ok=True)
 
