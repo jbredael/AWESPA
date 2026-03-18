@@ -8,7 +8,7 @@ directly and computes power curves using wind shear profiles from a wind resourc
 import sys
 import numpy as np
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 
 from .base import PowerEstimationModel
 
@@ -115,8 +115,9 @@ class LuchsingerPowerModel(PowerEstimationModel):
 
     def compute_power_curves(
         self,
-        output_path: Path = None,
         wind_speeds: Optional[np.ndarray] = None,
+        selected_profiles: list = None,
+        output_path: Path = None,
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
@@ -157,6 +158,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
 
         data = self.model.generate_power_curves(
             wind_speeds=wind_speeds,
+            selected_profiles=selected_profiles,
             output_path=output_path,
             verbose=verbose,
             show_plot=showplot,
@@ -169,13 +171,13 @@ class LuchsingerPowerModel(PowerEstimationModel):
     def calculate_power_at_wind_speed(
         self,
         wind_speed: float,
-        cluster_id: int = 1,
+        selected_profiles: list = None,
         output_path: Path = None,
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
         plot_path: Path = None,
-    ) -> float:
+    ) -> Union[float, List[float]]:
         """Calculate power output at a single wind speed.
 
         Uses the first matching wind cluster profile to derive the wind shear
@@ -183,8 +185,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
 
         Args:
             wind_speed (float): Wind speed at reference height [m/s].
-            cluster_id (int): Cluster ID (1-indexed) for wind profile
-                selection. Defaults to 1.
+            selected_profiles (list): Optional list of profile indices.
+                If None, all profiles are simulated.
             output_path (Path): Not used; Luchsinger model does not support
                 single-point export. Defaults to None.
             verbose (bool): Whether to print the result. Defaults to True.
@@ -193,61 +195,49 @@ class LuchsingerPowerModel(PowerEstimationModel):
             plot_path (Path): Not used. Defaults to None.
 
         Returns:
-            float: Average cycle power output [W].
+            Union[float, List[float]]: Cycle power output [W]. Returns a
+                list with one power value per profile when multiple profiles
+                are simulated. Returns a scalar when only one profile is
+                requested.
 
         Raises:
-            ValueError: If model is not initialized or cluster ID is not found.
+            ValueError: If model is not initialized.
+            KeyError: If simulation output does not include a power key.
         """
         if self.model is None:
             raise ValueError(
                 "Power model not initialized. Call load_configuration first."
             )
 
-        windResource = self.model.wind_resource
-        profiles = windResource["profiles"]
-        referenceHeight = windResource["reference_height_m"]
-
-        # Find the requested cluster profile
-        clusterProfile = next(
-            (p for p in profiles if p["id"] == cluster_id), None
-        )
-        if clusterProfile is None:
-            raise ValueError(
-                f"Cluster ID {cluster_id} not found in wind resource "
-                f"(available: {[p['id'] for p in profiles]})"
-            )
-
-        windProfile = {
-            "altitudes": windResource["altitudes"],
-            "u_normalized": clusterProfile["u_normalized"],
-        }
-
-        # Recompute nominal wind speeds for this profile before querying power
-        self.model._compute_nominal_wind_speeds_with_shear(
-            windProfile, referenceHeight
+        simulation_data = self.model.simulate_cycle_at_one_wind_speed(
+            wind_speed,
+            selected_profiles=selected_profiles,
+            verbose=verbose,
         )
 
-        result = self.model.calculate_power(
-            windSpeed=wind_speed,
-            wind_profile=windProfile,
-            reference_height_m=referenceHeight,
+        if isinstance(simulation_data, dict):
+            simulation_data = [simulation_data]
+
+        powers = []
+        for profile_data in simulation_data:
+            if "cyclePower" in profile_data:
+                powers.append(profile_data["cyclePower"])
+            elif "average_cycle_power_W" in profile_data:
+                powers.append(profile_data["average_cycle_power_W"])
+            else:
+                raise KeyError(
+                    "Simulation output is missing 'cyclePower' and "
+                    "'average_cycle_power_W'."
+                )
+
+        single_profile_requested = (
+            selected_profiles is not None and len(selected_profiles) == 1
         )
 
-        power = result["cyclePower"]
+        if single_profile_requested or len(powers) == 1:
+            return powers[0]
 
-        if verbose:
-            print(
-                f"\nPower at {wind_speed:.1f} m/s (cluster {cluster_id}): "
-                f"{power:.2f} W ({power / 1000:.2f} kW)"
-            )
-
-        if output_path is not None:
-            print(
-                "Note: single wind speed export is not supported by the "
-                "Luchsinger model."
-            )
-
-        return float(power)
+        return powers
 
     def plot_power_curves(
         self,

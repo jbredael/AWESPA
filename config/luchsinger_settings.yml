@@ -1,0 +1,22 @@
+# Simulation settings for Luchsinger power model.
+settings:
+  model: luchsinger_extended_const_lod_in      # Options: luchsinger_original, luchsinger_extended_const_lod_in
+
+  cut_in_wind_speed_m_s: 4.0      # Cut-in wind speed [m/s]
+  cut_out_wind_speed_m_s: 25.0    # Cut-out wind speed [m/s]
+
+  elevation_angle_out_deg: 30.0   # Tether elevation during reel-out [degrees]
+  elevation_angle_in_deg: 45.0    # Initial/reference reel-in angle [degrees], only used for luchsinger_original
+
+  num_points: 250                 # Number of wind speed points for power curve
+
+  minimum_tether_length_m: 100.0  # Minimum tether length [m]
+
+  air_density_kg_m3: 1.225        # Air density at sea level [kg/m³]
+
+  lift_coefficient_reel_out: 0.7
+  drag_coefficient_reel_out: 0.16
+  tether_drag_coefficient: 1.1
+
+  lift_coefficient_reel_in: 0.22  # Only used for luchsinger_original
+  drag_coefficient_reel_in: 0.11

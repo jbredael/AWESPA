@@ -23,7 +23,7 @@ def main():
     # ---- paths -----------------------------------------------------------
     configDir = PROJECT_ROOT / "config"
     systemPath = configDir / "kitepower V3_20.yml"
-    simulationSettingsPath = configDir /"Luchsinger_simulation_settings_config.yml"
+    simulationSettingsPath = configDir /"Luchsinger_settings.yml"
     windResourcePath = configDir / "wind_resource6.yml"
 
     resultsDir = PROJECT_ROOT / "results"
@@ -39,26 +39,27 @@ def main():
         wind_resource_path=windResourcePath,
     )
 
-    # # ---- single wind speed test ------------------------------------------
-    # print("\n" + "=" * 60)
-    # print("SINGLE WIND SPEED TEST (cluster 1)")
-    # print("=" * 60)
-    # power = model.calculate_power_at_wind_speed(
-    #     wind_speed=10.0,
-    #     cluster_id=1,
-    #     verbose=True,
-    # )
-
-    # ---- full power curve ------------------------------------------------
+    # ---- single wind speed test ------------------------------------------
     print("\n" + "=" * 60)
-    print("FULL POWER CURVE GENERATION")
+    print("SINGLE WIND SPEED TEST (cluster 1)")
     print("=" * 60)
-    data = model.compute_power_curves(
-        output_path=outputPath,
+    power = model.calculate_power_at_wind_speed(
+        wind_speed=10.0,
+        selected_profiles=[1,2],
         verbose=True,
-        showplot=True,
-        saveplot=True,
     )
+    print(f"\nCalculated power at 10 m/s: {power} W")
+
+    # # ---- full power curve ------------------------------------------------
+    # print("\n" + "=" * 60)
+    # print("FULL POWER CURVE GENERATION")
+    # print("=" * 60)
+    # data = model.compute_power_curves(
+    #     output_path=outputPath,
+    #     verbose=True,
+    #     showplot=True,
+    #     saveplot=True,
+    # )
 
     # ---- summary ---------------------------------------------------------
     print("\n" + "=" * 60)

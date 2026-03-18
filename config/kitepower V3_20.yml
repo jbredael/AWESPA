@@ -12,12 +12,6 @@ components:
     name: Kitepower V3.20
     type: LEI_soft_kite
     version: 1.0
-    aerodynamics:
-      simple_aero_model: # Parameters for simple models
-        lift_coefficient_reel_out: 0.9
-        drag_coefficient_reel_out: 0.2
-        lift_coefficient_reel_in: 0.17 # 0.20
-        drag_coefficient_reel_in: 0.1
     structure:
       projected_surface_area_m2: 19.75
       mass_kg: 12.0
@@ -25,7 +19,6 @@ components:
     name: Kitepower V3.20 Bridle
     type: LEI_soft_kite_bridle 
     version: 1.0
-    aerodynamics:
     structure:
       mass_kg: 2.8
   control_system:
@@ -38,8 +31,6 @@ components:
     name: Kitepower V3.20
     type: non_conductive_tether
     version: 1.0
-    aerodynamics:
-      drag_coefficient: 1.1
     structure:
       length_m: 300.0
       diameter_m: 0.004
