@@ -32,8 +32,7 @@ AWESPA/
 ├── src/awespa/                # Main package source code
 │   ├── wind/                  # Wind modeling components
 │   ├── power/                 # Power estimation models
-│   ├── pipeline/              # AEP calculation pipeline
-│   └── vendor/                # External dependencies
+│   └── pipeline/              # AEP calculation pipeline
 ├── tests/                     # Test suite
 └── docs/                      # Documentation
 ```
@@ -44,6 +43,7 @@ AWESPA/
 
 - Python 3.8 or higher
 - pip package manager
+- Git (required for pip to fetch dependencies from GitHub)
 
 ### Installation Instructions
 

@@ -1,6 +1,5 @@
-"""Wind profile clustering wrapper for the vendored wind-profile-clustering repository."""
+"""Wind profile clustering wrapper for the wind-profile-clustering package."""
 
-import sys
 import yaml
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,16 +8,12 @@ from typing import Dict, Any, Optional
 
 from .base import WindProfileModel
 
-# Add vendor path to import the clustering code
-VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "wind-profile-clustering" / "src"
-sys.path.insert(0, str(VENDOR_PATH))
-
 # Import vendor clustering functionality
 try:
-    from wind_profile_clustering.clustering import perform_clustering_analysis
-    from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities
-    from wind_profile_clustering.read_data.era5 import read_data as read_era5_data
-    from wind_profile_clustering.plotting import plot_all_results
+    from wind_profile_clustering.clustering import perform_clustering_analysis # type: ignore
+    from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities # type: ignore
+    from wind_profile_clustering.read_data.era5 import read_data as read_era5_data # type: ignore
+    from wind_profile_clustering.plotting import plot_all_results # type: ignore
 except ImportError as e:
     # Handle import errors gracefully during development
     print(f"Warning: Could not import vendor functions: {e}")
@@ -135,6 +130,9 @@ class WindProfileClusteringModel(WindProfileModel):
         
         # Prepare metadata
         metadata = {
+            'name': f"Wind Profile Clustering - {self.nClusters} Clusters",
+            'description': f"Wind profile clustering results with {self.nClusters} clusters.",
+            'note': "N/A",
             'data_source': self.dataSource.upper(),
             'location': self.location,
             'time_range': {

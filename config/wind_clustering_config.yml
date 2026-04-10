@@ -14,7 +14,7 @@ data_source:
     latitude: 54.126495365765976              # Location latitude in degrees
     longitude: -9.781335066728756              # Location longitude in degrees
   altitude_range: [0, 500]      # Altitude range in meters [min, max]
-  years: [2011, 2017]           # Year range [start_year, end_year]
+  years: [2011, 2011]           # Year range [start_year, end_year]
   
 # Output configuration
 output:

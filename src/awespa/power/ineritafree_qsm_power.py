@@ -1,21 +1,15 @@
-"""Inertia-Free QSM power estimation wrapper for the vendored InertiaFree-QSM repository.
+"""Inertia-Free QSM power estimation wrapper for the InertiaFree-QSM package.
 
-This wrapper adapts the vendored Inertia-Free Quasi-Steady Model to the AWESPA
+This wrapper adapts the Inertia-Free Quasi-Steady Model to the AWESPA
 modular architecture. The underlying model accepts awesIO format configuration
 files directly and supports both direct simulation and optimization-based power
-curve generation.
-"""
+curve generation."""
 
-import sys
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 from .base import PowerEstimationModel
-
-# Add vendor path to import the InertiaFree-QSM code
-VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "InertiaFree-QSM"
-sys.path.insert(0, str(VENDOR_PATH / "src"))
 
 try:
     from inertiafree_qsm import PowerCurveConstructor  # type: ignore

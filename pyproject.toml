@@ -88,7 +88,10 @@ dependencies = [
   "scipy",
   "scikit-learn",
   "xarray",
-  "netCDF4"
+  "netCDF4",
+  "inertiafree-qsm @ git+https://github.com/jbredael/InertiaFree-QSM.git",
+  "power-luchsinger @ git+https://github.com/jbredael/LuchsingerPowerModel.git",
+  "wind-profile-clustering @ git+https://github.com/jbredael/wind-profile-clustering-1.git@add-era5-and-restructure"
 ]
 
 # You can define additional groups of dependencies here (e.g., development dependencies).

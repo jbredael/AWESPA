@@ -1,23 +1,17 @@
-"""Luchsinger power estimation wrapper for the vendored LuchsingerModel repository.
+"""Luchsinger power estimation wrapper for the power-luchsinger package.
 
-This wrapper adapts the vendored Luchsinger power model to the AWESPA modular
+This wrapper adapts the Luchsinger power model to the AWESPA modular
 architecture. The underlying model accepts awesIO format configuration files
-directly and computes power curves using wind shear profiles from a wind resource.
-"""
+directly and computes power curves using wind shear profiles from a wind resource."""
 
-import sys
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 
 from .base import PowerEstimationModel
 
-# Add vendor path to import the Luchsinger model code
-VENDOR_PATH = Path(__file__).parent.parent / "vendor" / "LuchsingerPowerModel"
-sys.path.insert(0, str(VENDOR_PATH))
-
 try:
-    from src.power_luchsinger.power_model import PowerModel  # type: ignore
+    from power_luchsinger.power_model import PowerModel  # type: ignore
 except ImportError as e:
     print(f"Import error for LuchsingerPowerModel: {e}")
     PowerModel = None
