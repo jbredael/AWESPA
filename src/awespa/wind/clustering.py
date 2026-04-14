@@ -12,14 +12,12 @@ from .base import WindProfileModel
 try:
     from wind_profile_clustering.clustering import perform_clustering_analysis # type: ignore
     from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities # type: ignore
-    from wind_profile_clustering.read_data.era5 import read_data as read_era5_data # type: ignore
     from wind_profile_clustering.plotting import plot_all_results # type: ignore
 except ImportError as e:
     # Handle import errors gracefully during development
     print(f"Warning: Could not import vendor functions: {e}")
     perform_clustering_analysis = None
     export_wind_profile_shapes_and_probabilities = None
-    read_era5_data = None
     plot_all_results = None
 
 
@@ -94,19 +92,21 @@ class WindProfileClusteringModel(WindProfileModel):
             raise ImportError("Vendor clustering functions not available")
 
         # Load raw wind data
-        if self.dataSource.lower() == 'era5':
-            config = {
-                'data_dir': str(dataPath / "wind_data" / "era5"),
-                'location': self.location,
-                'altitude_range': self.altitudeRange,
-                'years': self.years
-            }
-            if verbose:
-                print(f"Loading ERA5 data from {config['data_dir']}...")
-            rawData = read_era5_data(config)
-        else:
-            raise NotImplementedError(f"Data source '{self.dataSource}' not yet implemented")
 
+        config = {
+            'data_dir': str(dataPath),
+            'location': self.location,
+            'altitude_range': self.altitudeRange,
+            'years': self.years
+        }
+        if self.dataSource.lower() == 'era5':
+            from wind_profile_clustering.read_data.era5 import read_data # type: ignore
+        elif self.dataSource.lower() == 'fgw_lidar':
+            from wind_profile_clustering.read_data.fgw_lidar import read_data # type: ignore
+        elif self.dataSource.lower() == 'dowa':
+            from wind_profile_clustering.read_data.dowa import read_data # type: ignore
+        rawData = read_data(config)
+        
         # Perform clustering analysis using vendor function
         if verbose:
             print(f"Performing wind profile clustering with {self.nClusters} clusters...")

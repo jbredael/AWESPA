@@ -20,7 +20,7 @@ ALPHA_STD = 0.2
 Z_REF = 200.0
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results" / "shear_gaming"
-WIND_RESOURCE_PATH = RESULTS_DIR / "wind_resource.yml"
+WIND_RESOURCE_SETTINGS_PATH = RESULTS_DIR / "wind_resource_settings.yml"
 
 
 def fit_power_law_shear(altitudes, wind_speeds, z_ref):
@@ -83,7 +83,7 @@ def main():
     print("=" * 80)
     
     # Load wind data
-    with open(WIND_RESOURCE_PATH, 'r') as f:
+    with open(WIND_RESOURCE_SETTINGS_PATH, 'r') as f:
         wind_data = yaml.safe_load(f)
     
     altitudes = np.array(wind_data['altitudes'])

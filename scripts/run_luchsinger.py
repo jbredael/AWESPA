@@ -20,13 +20,13 @@ from awespa.power.luchsinger_power import LuchsingerPowerModel
 
 def main():
     """Run Luchsinger model and export power curves."""
-    # ---- paths -----------------------------------------------------------
+    # ---- paths -----------------------------------------------    ------------
     configDir = PROJECT_ROOT / "config"
-    systemPath = configDir / "kitepower V3_20.yml"
-    simulationSettingsPath = configDir /"Luchsinger_settings.yml"
-    windResourcePath = configDir / "wind_resource6.yml"
+    systemPath = configDir / "example" / "kitepower V3_20.yml"
+    simulationSettingsPath = configDir /"example" / "luchsinger_settings.yml"
+    windResourceSettingsPath = configDir / "example" / "wind_resource_settings.yml"
 
-    resultsDir = PROJECT_ROOT / "results"
+    resultsDir = PROJECT_ROOT / "results" / "example"
     resultsDir.mkdir(parents=True, exist_ok=True)
     outputPath = resultsDir / "luchsinger_power_curves.yml"
 
@@ -36,7 +36,7 @@ def main():
     model.load_configuration(
         system_path=systemPath,
         simulation_settings_path=simulationSettingsPath,
-        wind_resource_path=windResourcePath,
+        wind_resource_settings_path=windResourceSettingsPath,
     )
 
     # ---- single wind speed test ------------------------------------------
@@ -45,21 +45,22 @@ def main():
     print("=" * 60)
     power = model.calculate_power_at_wind_speed(
         wind_speed=10.0,
-        selected_profiles=[1,2],
         verbose=True,
+        showplot=True,
+        saveplot=True,
     )
     print(f"\nCalculated power at 10 m/s: {power} W")
 
-    # # ---- full power curve ------------------------------------------------
-    # print("\n" + "=" * 60)
-    # print("FULL POWER CURVE GENERATION")
-    # print("=" * 60)
-    # data = model.compute_power_curves(
-    #     output_path=outputPath,
-    #     verbose=True,
-    #     showplot=True,
-    #     saveplot=True,
-    # )
+    # ---- full power curve ------------------------------------------------
+    print("\n" + "=" * 60)
+    print("FULL POWER CURVE GENERATION")
+    print("=" * 60)
+    data = model.compute_power_curves(
+        output_path=outputPath,
+        verbose=True,
+        showplot=True,
+        saveplot=True,
+    )
 
     # ---- summary ---------------------------------------------------------
     print("\n" + "=" * 60)

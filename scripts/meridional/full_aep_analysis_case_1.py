@@ -77,7 +77,7 @@ def main():
     results_dir.mkdir(parents=True, exist_ok=True)
     
     # Define output file paths
-    wind_resource_path = results_dir / "wind_resource.yml"
+    wind_resource_settings_path = results_dir / "wind_resource_settings.yml"
     power_curves_path = results_dir / "luchsinger_power_curves.yml"
     aep_results_path = results_dir / "luchsinger_aep_results.yml"
     
@@ -121,9 +121,9 @@ def main():
         print("\n[2/3] Performing wind profile clustering...")
         print("This may take several minutes depending on data size...")
         try:
-            wind_model.cluster(data_dir, wind_resource_path)
+            wind_model.cluster(data_dir, wind_resource_settings_path)
             print(f"✓ Wind clustering complete")
-            print(f"✓ Results saved to: {wind_resource_path}")
+            print(f"✓ Results saved to: {wind_resource_settings_path}")
         except Exception as e:
             print(f"✗ Error during wind clustering: {e}")
             import traceback
@@ -133,7 +133,7 @@ def main():
         # Display clustering summary
         print("\n[3/3] Wind clustering summary:")
         try:
-            with open(wind_resource_path, 'r') as f:
+            with open(wind_resource_settings_path, 'r') as f:
                 wind_data = yaml.safe_load(f)
             print(f"  - Number of clusters: {wind_data['metadata']['n_clusters']}")
             print(f"  - Total samples: {wind_data['metadata']['total_samples']}")
@@ -143,8 +143,8 @@ def main():
             print(f"Warning: Could not display summary: {e}")
     else:
         print("\nSkipping wind clustering (using existing results)")
-        if not wind_resource_path.exists():
-            print(f"ERROR: Wind resource file not found: {wind_resource_path}")
+        if not wind_resource_settings_path.exists():
+            print(f"ERROR: Wind resource settings file not found: {wind_resource_settings_path}")
             print("Please run wind clustering first or set run_wind_clustering=True")
             return False
     
@@ -168,13 +168,13 @@ def main():
         print(f"\nLoading configuration files:")
         print(f"  - System: {system_path.name}")
         print(f"  - Simulation settings: {simulation_settings_path.name}")
-        print(f"  - Wind resource: {wind_resource_path.name}")
+        print(f"  - Wind resource settings: {wind_resource_settings_path.name}")
         
         try:
             power_model.load_configuration(
                 systemPath=system_path,
                 simulationSettingsPath=simulation_settings_path,
-                windResourcePath=wind_resource_path
+                windResourceSettingsPath=wind_resource_settings_path
             )
             print("✓ Power model configuration loaded successfully")
             print(f"  - Kite area: {power_model.powerModel.wingArea} m²")
@@ -249,7 +249,7 @@ def main():
         try:
             aep_results = calculate_aep(
                 power_curve_path=power_curves_path,
-                wind_resource_path=wind_resource_path,
+                wind_resource_settings_path=wind_resource_settings_path,
                 output_path=aep_results_path,
                 plot=True,  # Generate plots
                 plot_output_dir=results_dir
@@ -285,7 +285,7 @@ def main():
     print("FULL AEP ANALYSIS COMPLETE!")
     print("=" * 80)
     print(f"\nAll results saved to: {results_dir}")
-    print(f"  - Wind resource: {wind_resource_path.name}")
+    print(f"  - Wind resource settings: {wind_resource_settings_path.name}")
     print(f"  - Power curves: {power_curves_path.name}")
     print(f"  - AEP results: {aep_results_path.name}")
     print(f"  - Plots: aep_analysis_complete.png")

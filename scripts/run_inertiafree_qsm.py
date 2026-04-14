@@ -21,10 +21,10 @@ from awespa.power.ineritafree_qsm_power import InertiaFreeQSMPowerModel
 def main():
     """Run InertiaFree-QSM model and export power curves."""
     # ---- paths -----------------------------------------------------------
-    configDir = PROJECT_ROOT / "config"
+    configDir = PROJECT_ROOT / "config" / "example"
     systemPath = configDir / "kitepower V3_20.yml"
-    simulationSettingsPath = configDir / "inertiafree_qsm_simulation_settings.yml"
-    windResourcePath = configDir / "wind_resource6.yml"
+    simulationSettingsPath = configDir / "intertiafree-qsm_settings.yml"
+    windResourceSettingsPath = configDir / "wind_resource_settings.yml"
 
     resultsDir = PROJECT_ROOT / "results"
     resultsDir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +36,7 @@ def main():
     model.load_configuration(
         system_path=systemPath,
         simulation_settings_path=simulationSettingsPath,
-        wind_resource_path=windResourcePath,
+        wind_resource_settings_path=windResourceSettingsPath,
     )
 
     # # ---- single wind speed test ------------------------------------------
@@ -56,7 +56,7 @@ def main():
     print("=" * 60)
     data = model.compute_power_curves(
         output_path=outputDirect,
-        method="optimization",
+        method="direct",
         verbose=True,
         showplot=True,
         saveplot=True,

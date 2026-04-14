@@ -10,7 +10,7 @@ from datetime import datetime
 
 def calculate_aep(
     power_curve_path: Path, 
-    wind_resource_path: Path,
+    wind_resource_settings_path: Path,
     output_path: Optional[Path] = None,
     plot: bool = False,
     plot_output_dir: Optional[Path] = None
@@ -22,7 +22,7 @@ def calculate_aep(
     
     Args:
         power_curve_path: Path to power_curves.yml file.
-        wind_resource_path: Path to wind_resource.yml file.
+        wind_resource_settings_path: Path to wind_resource_settings.yml file.
         output_path: Optional path to save AEP results YAML. If None, no file is saved.
         plot: If True, generate and display/save plots.
         plot_output_dir: Directory to save plots. If None, plots are shown but not saved.
@@ -34,7 +34,7 @@ def calculate_aep(
     with open(power_curve_path, 'r') as f:
         power_data = yaml.safe_load(f)
     
-    with open(wind_resource_path, 'r') as f:
+    with open(wind_resource_settings_path, 'r') as f:
         wind_data = yaml.load(f, Loader=yaml.FullLoader)
     
     # Calculate AEP components

@@ -14,6 +14,8 @@ AWESPA provides a complete pipeline for AWE system performance analysis:
 - **Power Estimation**: Compute power curves using physics-based models (e.g., Luchsinger model)
 - **AEP Calculation**: Calculate Annual Energy Production, capacity factor, and cluster contributions
 
+The idea behind the toolchain is to enable researchers and engineers to easily assess the performance of AWE systems under realistic wind conditions, and to compare different system configurations and power estimation models. By taking away all the manual work of comibining the different steps. With the use of the awesIO standard format
+
 ## Project Structure
 
 ```
@@ -138,7 +140,7 @@ from awespa.pipeline.aep import calculate_aep
 # 1. Wind Clustering
 wind_model = WindProfileClusteringModel()
 wind_model.load_from_yaml(Path("config/wind_clustering_config.yml"))
-wind_model.cluster(data_path=Path("data"), output_path=Path("results/wind_resource.yml"))
+wind_model.cluster(data_path=Path("data"), output_path=Path("results/wind_resource_settings.yml"))
 
 # 2. Power Curve Generation
 power_model = LuchsingerPowerModel()
@@ -151,7 +153,7 @@ power_model.compute_power_curves(output_path=Path("results/power_curves.yml"), p
 # 3. AEP Calculation
 aep_results = calculate_aep(
     power_curve_path=Path("results/power_curves.yml"),
-    wind_resource_path=Path("results/wind_resource.yml"),
+    wind_resource_settings_path=Path("results/wind_resource_settings.yml"),
     output_path=Path("results/aep_results.yml"),
     plot=True
 )

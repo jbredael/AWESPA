@@ -164,7 +164,7 @@ Complete Analysis Pipeline Example
    # 1. Wind Clustering
    wind_model = WindProfileClusteringModel()
    wind_model.load_from_yaml(Path("config/wind_clustering_config.yml"))
-   wind_model.cluster(data_path=Path("data"), output_path=Path("results/wind_resource.yml"))
+   wind_model.cluster(data_path=Path("data"), output_path=Path("results/wind_resource_settings.yml"))
 
    # 2. Power Curve Generation
    power_model = LuchsingerPowerModel()
@@ -177,7 +177,7 @@ Complete Analysis Pipeline Example
    # 3. AEP Calculation
    aep_results = calculate_aep(
        power_curve_path=Path("results/power_curves.yml"),
-       wind_resource_path=Path("results/wind_resource.yml"),
+       wind_resource_settings_path=Path("results/wind_resource_settings.yml"),
        output_path=Path("results/aep_results.yml"),
        plot=True
    )
