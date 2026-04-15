@@ -7,7 +7,7 @@ Welcome to the AWESPA development guide. This document contains instructions for
 AWESPA (Airborne Wind Energy System Performance Assessment) is a modular Python toolchain with three main components:
 - **Wind Module**: Wind profile clustering from ERA5 data
 - **Power Module**: Physics-based power estimation models
-- **Pipeline Module**: AEP calculation orchestration
+- **Pipeline Module**: Has different functions that combine the different modules in AWESPA or do calculation with the exported data like AEP calculation. This module does not refer to external code.
 
 ## Project Architecture
 
@@ -18,50 +18,58 @@ src/awespa/
 │   ├── base.py              # WindProfileModel ABC
 │   └── clustering.py        # WindProfileClusteringModel implementation
 ├── power/                   # Power estimation models
-│   ├── base.py              # PowerEstimationModel ABC
-│   ├── awe_power.py         # AWE power model
-│   └── luchsinger_power.py  # Luchsinger power model
+│   ├── base.py                      # PowerEstimationModel ABC
+│   ├── luchsinger_power.py          # Luchsinger power model
+│   └── inertiafree_qsm_power.py     # Inertia-Free QSM power model
 ├── pipeline/                # Pipeline orchestration
 │   └── aep.py               # AEP calculation functions
-└── vendor/                  # External dependencies
-    ├── AWE_production_estimation/
-    ├── LuchsingerPowerModel/
-    └── wind-profile-clustering/
 ```
 
-## Development Guidelines
 
-### Branch Management
-- Work with `main` branch for stable releases
-- Create feature branches for implementing new features
-- Merge via Pull Request once features are complete and tested
 
-### Configuration Files
-- Write user settings in `.yaml` files in the `config/` directory
-- Store case-specific configurations in subdirectories (e.g., `config/meridional_case_1/`)
+## Naming Conventions
 
-### Code Organization
-- All essential code resides in `src/awespa/`
-- Install the package using `pip install -e .` for development
-- Import using `import awespa` or `from awespa import ...`
+| Element       | Convention         | Examples                            |
+|---------------|-------------------|-------------------------------------|
+| Functions     | snake_case        | `compute_force`, `calculate_power`  |
+| Variables     | mixedCase         | `windSpeed`, `turbinePower`         |
+| Classes       | CamelCase         | `WindModel`, `PowerCalculator`      |
+| Methods       | snake_case        | `get_values`, `update_state`        |
+| Constants     | UPPER_SNAKE_CASE  | `AIR_DENSITY`, `MAX_ITERATIONS`     |
+| Modules       | snake_case        | `utilities.py`, `aero_model.py`     |
+| Packages      | lowercase         | `simulation`, `windanalysis`        |
+| Booleans      | is_ prefix or UPPER| `is_valid`, `IS_ACTIVE`            |
 
-### Data Management
-- Raw data → `data/`
-- Processed data → `processed_data/`
-- Results → `results/`
-- Results should include the settings used for reproducibility
+## Docstring Conventions
 
-### Git Ignore Policy
-The folders `data/`, `processed_data/`, and `results/` are in `.gitignore` because they may contain:
-- Large files unsuitable for version control
-- Confidential data
-- Generated data that can be recreated
+Use Google-style docstrings:
+
+```python
+def calculate_power(wind_speed: float, air_density: float = 1.225) -> float:
+    """Calculate power output at given wind speed.
+
+    Computes mechanical power using simplified physics model.
+
+    Args:
+        wind_speed: Wind speed in m/s.
+        air_density: Air density in kg/m³. Defaults to 1.225.
+
+    Raises:
+        ValueError: If wind_speed is negative.
+
+    Returns:
+        Power output in Watts.
+    """
+    if wind_speed < 0:
+        raise ValueError("Wind speed cannot be negative")
+    return 0.5 * air_density * wind_speed ** 3
+```
 
 ## Setting Up Your Development Environment
 
 1. Clone the repository:
     ```bash
-    git clone git@github.com:awegroup/AWESPA.git
+    git clone https://github.com/jbredael/AWESPA.git
     cd AWESPA
     ```
 
@@ -137,43 +145,6 @@ The folders `data/`, `processed_data/`, and `results/` are in `.gitignore` becau
     git branch -d feature/<issue-number>-<short-description>
     ```
 
-## Naming Conventions
-
-| Element       | Convention         | Examples                            |
-|---------------|-------------------|-------------------------------------|
-| Functions     | snake_case        | `compute_force`, `calculate_power`  |
-| Variables     | mixedCase         | `windSpeed`, `turbinePower`         |
-| Classes       | CamelCase         | `WindModel`, `PowerCalculator`      |
-| Methods       | snake_case        | `get_values`, `update_state`        |
-| Constants     | UPPER_SNAKE_CASE  | `AIR_DENSITY`, `MAX_ITERATIONS`     |
-| Modules       | snake_case        | `utilities.py`, `aero_model.py`     |
-| Packages      | lowercase         | `simulation`, `windanalysis`        |
-| Booleans      | is_ prefix or UPPER| `is_valid`, `IS_ACTIVE`            |
-
-## Docstring Conventions
-
-Use Google-style docstrings:
-
-```python
-def calculate_power(wind_speed: float, air_density: float = 1.225) -> float:
-    """Calculate power output at given wind speed.
-
-    Computes mechanical power using simplified physics model.
-
-    Args:
-        wind_speed: Wind speed in m/s.
-        air_density: Air density in kg/m³. Defaults to 1.225.
-
-    Raises:
-        ValueError: If wind_speed is negative.
-
-    Returns:
-        Power output in Watts.
-    """
-    if wind_speed < 0:
-        raise ValueError("Wind speed cannot be negative")
-    return 0.5 * air_density * wind_speed ** 3
-```
 
 ## Testing Guidelines
 
@@ -230,12 +201,16 @@ dependencies = [
     "scipy",
     "scikit-learn",
     "xarray",
-    "netCDF4"
+    "netCDF4",
+    "inertiafree-qsm @ git+https://github.com/jbredael/InertiaFree-QSM.git",
+    "power-luchsinger @ git+https://github.com/jbredael/LuchsingerPowerModel.git",
+    "wind-profile-clustering @ git+https://github.com/awegroup/wind-profile-clustering.git",
+    "awesio @ git+https://github.com/awegroup/awesIO.git"
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "black", "flake8", "isort", "mypy"]
-docs = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
+docs = ["sphinx>=5.0", "furo", "myst-parser", "sphinx-autodoc-typehints"]
 ```
 
 ### Using the Package
@@ -246,7 +221,7 @@ import awespa
 
 # Import specific components
 from awespa import WindProfileClusteringModel, calculate_aep
-from awespa.power import LuchsingerPowerModel
+from awespa.power import LuchsingerPowerModel, InertiaFreeQSMPowerModel
 
 # Access version
 print(awespa.__version__)
@@ -263,17 +238,20 @@ To add a new power estimation model:
     from awespa.power.base import PowerEstimationModel
     
     class MyPowerModel(PowerEstimationModel):
-        def load_configuration(self, system_path, simulation_settings_path, 
-                               operational_constraints_path=None):
+        def load_configuration(self, system_path, simulation_settings_path=None,
+                               operational_constraints_path=None,
+                               wind_resource_path=None):
             # Implementation
             pass
-        
-        def compute_power_curves(self, output_path, plot=False):
+
+        def compute_power_curves(self, output_path, verbose=False,
+                                 showplot=False, saveplot=False, plot_path=None):
             # Implementation
             pass
-        
-        def calculate_power_at_wind_speed(self, wind_speed, output_path=None, 
-                                          plot=False):
+
+        def calculate_power_at_wind_speed(self, wind_speed, output_path=None,
+                                          verbose=False, showplot=False,
+                                          saveplot=False, plot_path=None):
             # Implementation
             pass
     ```
@@ -296,22 +274,12 @@ cd docs
 make html
 ```
 
-Documentation is built using Sphinx with the ReadTheDocs theme.
-
-## Continuous Integration
-
-Tests run automatically on:
-- Push to `main`
-- Pull requests
-
-The CI pipeline includes:
-- Running pytest
-- Coverage reporting
-- Linting checks
+Documentation is built using Sphinx with the Furo theme.
 
 ## Resources
 
+- [**AWESPA Documentation**](https://jbredael.github.io/AWESPA/) - Getting started guide and API reference
 - [AWE Group Developer Guide](https://awegroup.github.io/developer-guide/)
-- [AWESPA Repository](https://github.com/awegroup/AWESPA)
+- [AWESPA Repository](https://github.com/jbredael/AWESPA)
 - [Python Packaging Guide](https://packaging.python.org/)
 - [pytest Documentation](https://docs.pytest.org/)

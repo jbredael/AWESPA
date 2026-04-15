@@ -128,7 +128,7 @@ two power curve generation methods:
     Slower, numerically optimises the cycle parameters per wind speed to
     maximise output power.
 
-.. autoclass:: awespa.power.ineritafree_qsm_power.InertiaFreeQSMPowerModel
+.. autoclass:: awespa.power.inertiafree_qsm_power.InertiaFreeQSMPowerModel
    :members:
    :undoc-members:
    :show-inheritance:
@@ -154,7 +154,7 @@ Usage example
 .. code-block:: python
 
    from pathlib import Path
-   from awespa.power.ineritafree_qsm_power import InertiaFreeQSMPowerModel
+   from awespa.power.inertiafree_qsm_power import InertiaFreeQSMPowerModel
 
    model = InertiaFreeQSMPowerModel()
    model.load_configuration(

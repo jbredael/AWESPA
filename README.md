@@ -12,13 +12,16 @@ AWESPA provides a complete, three-step pipeline for AWE system performance analy
 
 1. **Wind module** – Process ERA5 (or other) wind data to extract representative wind profiles via clustering.
 2. **Power module** – Compute power curves for each wind profile cluster using a physics-based power model.
-3. **Pipeline module** – Combine the wind resource and power curves to compute Annual Energy Production (AEP), capacity factor, and cluster contributions.
+3. **Pipeline module** – Which combines the other modules for example to calculate AEP.
 
 ### Design philosophy
 
 All tools are installed as a Python package and can be used as a library or through the provided runnable scripts. Each module is built around an Abstract Base Class (ABC) so that different implementations (e.g. different power models) share the same interface. Swapping in a new model only requires changing the class you instantiate — the rest of the pipeline stays the same.
 
 All configuration is stored in YAML files, making analyses easy to reproduce and share. The inter-module data format follows the [awesIO](https://github.com/awegroup/awesIO) standard, so the output of one step is directly readable by the next.
+
+### Reason for development
+While there are existing tools for AWE performance assessment, they often lack modularity, are not open-source, or require significant effort to set up and run. AWESPA aims to fill this gap by providing a user-friendly, flexible, and extensible toolchain that can be easily adopted by researchers and practitioners in the AWE community.
 
 ## Project Structure
 
@@ -53,7 +56,7 @@ AWESPA/
 If you want to use AWESPA in your own project without cloning this repository, install it directly from GitHub:
 
 ```bash
-pip install git+https://github.com/awegroup/AWESPA.git
+pip install git+https://github.com/jbredael/AWESPA.git
 ```
 
 After installation you can import AWESPA in any Python environment:
@@ -71,7 +74,7 @@ The example configuration files in `config/example/` of this repository can serv
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/awegroup/AWESPA.git
+    git clone https://github.com/jbredael/AWESPA.git
     cd AWESPA
     ```
 
@@ -117,7 +120,7 @@ The example configuration files in `config/example/` of this repository can serv
 # Module-level imports
 from awespa.wind.clustering import WindProfileClusteringModel
 from awespa.power.luchsinger_power import LuchsingerPowerModel
-from awespa.power.ineritafree_qsm_power import InertiaFreeQSMPowerModel
+from awespa.power.inertiafree_qsm_power import InertiaFreeQSMPowerModel
 from awespa.pipeline.aep import calculate_aep
 ```
 
