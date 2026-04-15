@@ -91,7 +91,8 @@ dependencies = [
   "netCDF4",
   "inertiafree-qsm @ git+https://github.com/jbredael/InertiaFree-QSM.git",
   "power-luchsinger @ git+https://github.com/jbredael/LuchsingerPowerModel.git",
-  "wind-profile-clustering @ git+https://github.com/jbredael/wind-profile-clustering-1.git@add-era5-and-restructure"
+  "wind-profile-clustering @ git+https://github.com/awegroup/wind-profile-clustering.git",
+  "awesio @ git+https://github.com/awegroup/awesIO.git"
 ]
 
 # You can define additional groups of dependencies here (e.g., development dependencies).

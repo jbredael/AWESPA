@@ -33,7 +33,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
         """Initialize the Luchsinger power estimation model."""
         self.model: Optional[Any] = None
         self.systemPath: Optional[Path] = None
-        self.windResourceSettingsPath: Optional[Path] = None
+        self.windResourcePath: Optional[Path] = None
         self.simulationSettingsPath: Optional[Path] = None
 
     def load_configuration(
@@ -41,7 +41,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
         system_path: Path,
         simulation_settings_path: Path,
         operational_constraints_path: Path = None,
-        wind_resource_settings_path: Path = None,
+        wind_resource_path: Path = None,
     ) -> None:
         """Load power model configuration from YAML files.
 
@@ -55,7 +55,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 file containing operational envelope and atmosphere parameters.
             operational_constraints_path (Path): Not used by this model.
                 Defaults to None.
-            wind_resource_settings_path (Path): Path to wind resource settings YAML file
+            wind_resource_path (Path): Path to wind resource YAML file
                 containing altitude profiles, clusters, and probability matrix.
 
         Raises:
@@ -69,7 +69,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
 
         self.systemPath = Path(system_path)
         self.simulationSettingsPath = Path(simulation_settings_path)
-        self.windResourceSettingsPath = Path(wind_resource_settings_path) if wind_resource_settings_path else None
+        self.windResourcePath = Path(wind_resource_path) if wind_resource_path else None
 
         # Validate that required files exist
         for label, path in [
@@ -79,19 +79,19 @@ class LuchsingerPowerModel(PowerEstimationModel):
             if not path.exists():
                 raise FileNotFoundError(f"{label} file not found: {path}")
 
-        if self.windResourceSettingsPath is None:
+        if self.windResourcePath is None:
             raise ValueError(
-                "wind_resource_settings_path is required for the Luchsinger model."
+                "wind_resource_path is required for the Luchsinger model."
             )
-        if not self.windResourceSettingsPath.exists():
+        if not self.windResourcePath.exists():
             raise FileNotFoundError(
-                f"Wind resource settings file not found: {self.windResourceSettingsPath}"
+                f"Wind resource file not found: {self.windResourcePath}"
             )
 
         # Create the PowerModel (loads all config internally)
         self.model = PowerModel(
             system_config_path=self.systemPath,
-            wind_resource_path=self.windResourceSettingsPath,
+            wind_resource_path=self.windResourcePath,
             simulation_settings_path=self.simulationSettingsPath,
             validate_file=False,
         )

@@ -43,7 +43,7 @@ MEAN_WIND_SPEED_M_S = 10.0  # Mean wind speed at reference height
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results" / "shear_gaming"
 POWER_CURVES_PATH = RESULTS_DIR / "power_curves_direct_simulation.yml"
-WIND_RESOURCE_SETTINGS_PATH = RESULTS_DIR / "wind_resource_settings.yml"
+WIND_RESOURCE_PATH = RESULTS_DIR / "wind_resource.yml"
 
 # =============================================================================
 # HELPER FUNCTIONS

@@ -4,39 +4,40 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-A modular Python toolchain for assessing Airborne Wind Energy (AWE) system performance using wind profile clustering, power estimation models, and Annual Energy Production (AEP) calculation.
+A modular Python toolchain for assessing Airborne Wind Energy (AWE) system performance using wind profile clustering, physics-based power estimation models, and Annual Energy Production (AEP) calculation.
 
 ## Overview
 
-AWESPA provides a complete pipeline for AWE system performance analysis:
+AWESPA provides a complete, three-step pipeline for AWE system performance analysis:
 
-- **Wind Profile Clustering**: Process ERA5 wind data to identify representative wind profiles
-- **Power Estimation**: Compute power curves using physics-based models (e.g., Luchsinger model)
-- **AEP Calculation**: Calculate Annual Energy Production, capacity factor, and cluster contributions
+1. **Wind module** – Process ERA5 (or other) wind data to extract representative wind profiles via clustering.
+2. **Power module** – Compute power curves for each wind profile cluster using a physics-based power model.
+3. **Pipeline module** – Combine the wind resource and power curves to compute Annual Energy Production (AEP), capacity factor, and cluster contributions.
 
-The idea behind the toolchain is to enable researchers and engineers to easily assess the performance of AWE systems under realistic wind conditions, and to compare different system configurations and power estimation models. By taking away all the manual work of comibining the different steps. With the use of the awesIO standard format
+### Design philosophy
+
+All tools are installed as a Python package and can be used as a library or through the provided runnable scripts. Each module is built around an Abstract Base Class (ABC) so that different implementations (e.g. different power models) share the same interface. Swapping in a new model only requires changing the class you instantiate — the rest of the pipeline stays the same.
+
+All configuration is stored in YAML files, making analyses easy to reproduce and share. The inter-module data format follows the [awesIO](https://github.com/awegroup/awesIO) standard, so the output of one step is directly readable by the next.
 
 ## Project Structure
 
 ```
 AWESPA/
-├── config/                    # Configuration files (YAML)
-│   ├── wind_clustering_config.yml
-│   └── meridional_case_1/     # Case-specific configurations
-├── data/                      # Input data (ERA5 wind data)
-├── processed_data/            # Intermediate processed data
-├── results/                   # Output results and plots
+├── config/                    # YAML configuration files
+│   └── example/               # Ready-to-run example configurations
+├── data/                      # Input wind data (ERA5 NetCDF files)
+├── results/                   # AEP results, power curves, and plots
 ├── scripts/                   # Runnable analysis scripts
 │   ├── run_wind_clustering.py
 │   ├── run_luchsinger.py
-│   ├── compare_power_models.py
-│   └── meridional/            # Case study scripts
-├── src/awespa/                # Main package source code
-│   ├── wind/                  # Wind modeling components
-│   ├── power/                 # Power estimation models
-│   └── pipeline/              # AEP calculation pipeline
+│   └── run_inertiafree_qsm.py
+├── src/awespa/                # Package source code
+│   ├── wind/                  # Wind module (base class + ERA5 clustering wrapper)
+│   ├── power/                 # Power module (base class + model wrappers)
+│   └── pipeline/              # AEP pipeline
 ├── tests/                     # Test suite
-└── docs/                      # Documentation
+└── docs/                      # Sphinx documentation
 ```
 
 ## Installation
@@ -44,10 +45,29 @@ AWESPA/
 ### Prerequisites
 
 - Python 3.8 or higher
-- pip package manager
-- Git (required for pip to fetch dependencies from GitHub)
+- pip
+- Git (required to fetch the GitHub-hosted dependencies)
 
-### Installation Instructions
+### Option A — Install as a library (recommended for most users)
+
+If you want to use AWESPA in your own project without cloning this repository, install it directly from GitHub:
+
+```bash
+pip install git+https://github.com/awegroup/AWESPA.git
+```
+
+After installation you can import AWESPA in any Python environment:
+
+```python
+from awespa.wind.clustering import WindProfileClusteringModel
+from awespa.power.luchsinger_power import LuchsingerPowerModel
+from awespa.pipeline.aep import calculate_aep
+```
+
+You will still need to provide your own configuration YAML files and wind data.
+The example configuration files in `config/example/` of this repository can serve as a starting point.
+
+### Option B — Clone the repository (for running the example scripts or contributing)
 
 1. Clone the repository:
     ```bash
@@ -55,81 +75,72 @@ AWESPA/
     cd AWESPA
     ```
 
-2. Create a virtual environment:
-   
-    Linux or Mac:
+2. Create and activate a virtual environment:
+
+    Linux / macOS:
     ```bash
     python3 -m venv venv
-    ```
-    
-    Windows:
-    ```bash
-    python -m venv venv
-    ```
-    
-3. Activate the virtual environment:
-
-    Linux or Mac:
-    ```bash
     source venv/bin/activate
     ```
 
     Windows (PowerShell):
     ```bash
+    python -m venv venv
     .\venv\Scripts\Activate
     ```
 
-4. Install the package:
+3. Install the package:
 
-    For users:
+    For users (run the example scripts):
     ```bash
     pip install .
     ```
-        
-    For developers:
+
+    For developers (editable install with dev tools):
     ```bash
     pip install -e .[dev]
     ```
 
-5. To deactivate the virtual environment:
+4. To deactivate the virtual environment when you are done:
     ```bash
     deactivate
     ```
 
+> **Note:** All physics-based dependencies (`inertiafree-qsm`, `power-luchsinger`, `wind-profile-clustering`) are fetched automatically from GitHub during `pip install`. Git must be available on your `PATH`.
+
 ## Usage
 
-### Quick Start
+### Imports
 
 ```python
-import awespa
 
-# Access main components
-from awespa import WindProfileClusteringModel, PowerEstimationModel, calculate_aep
-
-# Or access modules directly
-from awespa.wind import WindProfileClusteringModel
-from awespa.power import LuchsingerPowerModel
-from awespa.pipeline import calculate_aep
+# Module-level imports
+from awespa.wind.clustering import WindProfileClusteringModel
+from awespa.power.luchsinger_power import LuchsingerPowerModel
+from awespa.power.ineritafree_qsm_power import InertiaFreeQSMPowerModel
+from awespa.pipeline.aep import calculate_aep
 ```
 
-### Running Analysis Scripts
+### Running the example scripts
 
-**Wind Profile Clustering:**
+Each script uses the configuration files in `config/example/` and writes output to `results/example/`.
+
+**Step 1 – Wind profile clustering:**
 ```bash
 python scripts/run_wind_clustering.py
 ```
 
-**Power Curve Generation:**
+**Step 2 – Power curve generation (Luchsinger model):**
 ```bash
 python scripts/run_luchsinger.py
 ```
 
-**Full AEP Analysis (Case Study):**
+**Step 2 (alternative) – Power curve generation (Inertia-Free QSM):**
 ```bash
-python scripts/meridional/full_aep_analysis_case_1.py
+python scripts/run_inertiafree_qsm.py
 ```
 
-### Example: Complete Analysis Pipeline
+### Complete pipeline example
 
 ```python
 from pathlib import Path
@@ -137,60 +148,86 @@ from awespa.wind.clustering import WindProfileClusteringModel
 from awespa.power.luchsinger_power import LuchsingerPowerModel
 from awespa.pipeline.aep import calculate_aep
 
-# 1. Wind Clustering
-wind_model = WindProfileClusteringModel()
-wind_model.load_from_yaml(Path("config/wind_clustering_config.yml"))
-wind_model.cluster(data_path=Path("data"), output_path=Path("results/wind_resource_settings.yml"))
+CONFIG = Path("config/example")
+RESULTS = Path("results/example")
+RESULTS.mkdir(parents=True, exist_ok=True)
 
-# 2. Power Curve Generation
+# --- Step 1: Wind profile clustering ---
+wind_model = WindProfileClusteringModel()
+wind_model.load_from_yaml(CONFIG / "wind_clustering_settings.yml")
+wind_model.cluster(
+    dataPath=Path("data/wind_data/era5"),
+    outputPath=RESULTS / "wind_resource.yml",
+    verbose=True,
+    showplot=False,
+    saveplot=True,
+    plotpath=RESULTS / "plots",
+)
+
+# --- Step 2: Power curve generation ---
 power_model = LuchsingerPowerModel()
 power_model.load_configuration(
-    system_path=Path("config/meridional_case_1/soft_kite_pumping_ground_gen_system.yml"),
-    simulation_settings_path=Path("config/meridional_case_1/Lucsinger_simulation_settings_config.yml")
+    system_path=CONFIG / "kitepower V3_20.yml",
+    simulation_settings_path=CONFIG / "luchsinger_settings.yml",
+    wind_resource_path=RESULTS / "wind_resource.yml",
 )
-power_model.compute_power_curves(output_path=Path("results/power_curves.yml"), plot=True)
+power_model.compute_power_curves(
+    output_path=RESULTS / "power_curves.yml",
+    verbose=True,
+    showplot=False,
+    saveplot=True,
+)
 
-# 3. AEP Calculation
+# --- Step 3: AEP calculation ---
 aep_results = calculate_aep(
-    power_curve_path=Path("results/power_curves.yml"),
-    wind_resource_settings_path=Path("results/wind_resource_settings.yml"),
-    output_path=Path("results/aep_results.yml"),
-    plot=True
+    power_curve_path=RESULTS / "power_curves.yml",
+    wind_resource_path=RESULTS / "wind_resource.yml",
+    output_path=RESULTS / "aep_results.yml",
+    plot=True,
+    plot_output_dir=RESULTS / "plots",
 )
-print(f"Annual Energy Production: {aep_results['aep_kwh']:.2f} kWh")
+print(f"AEP: {aep_results['aep_MWh']:.1f} MWh/year")
 ```
+
+## Configuration files
+
+Each step is controlled by one or more YAML files. Example files are provided in `config/example/`:
+
+| File | Used by | Purpose |
+|------|---------|---------|
+| `wind_clustering_settings.yml` | Wind module | Clustering parameters, data source, location |
+| `kitepower V3_20.yml` | Power module | System parameters (wing, tether, ground station) in awesIO format |
+| `luchsinger_settings.yml` | Power module | Luchsinger simulation settings |
+| `intertiafree-qsm_settings.yml` | Power module | Inertia-Free QSM simulation settings |
+| `wind_resource.yml` | Power module, Pipeline | Output of the wind module; wind profiles and probability matrix |
 
 ## Testing
 
-Run tests using pytest:
+Run all tests:
 ```bash
 pytest
 ```
 
-Run with coverage:
+Run with coverage report:
 ```bash
 pytest --cov=awespa
 ```
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. Please make sure to update tests as appropriate.
 
 See [README_dev.md](README_dev.md) for detailed development guidelines.
 
 ## License
 
-MIT License
-
-Copyright (c) 2024 Airborne Wind Energy Research Group, TU Delft
+MIT License — Copyright (c) 2024 Airborne Wind Energy Research Group, TU Delft
 
 Technische Universiteit Delft hereby disclaims all copyright interest in the program "AWESPA" (Airborne Wind Energy System Performance Assessment Toolchain) written by the Author(s).
 
 Prof.dr. H.G.C. (Henri) Werij, Dean of Aerospace Engineering
 
-## Help and Documentation
+## Documentation
 
 - [**AWESPA Documentation**](https://awegroup.github.io/AWESPA/) - Getting started guide and API reference
 - [AWE Group | Developer Guide](https://awegroup.github.io/developer-guide/)

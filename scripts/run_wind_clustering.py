@@ -24,11 +24,11 @@ from awespa.wind.clustering import WindProfileClusteringModel
 def main():
     """Run wind profile clustering."""
 
-    config_path = PROJECT_ROOT / "config" / "example" / "wind_clustering_config.yml"
+    config_path = PROJECT_ROOT / "config" / "example" / "wind_clustering_settings.yml"
     # Assuming the wind data is stored in the data directory, adjust as needed
     data_path = PROJECT_ROOT / "data" / "wind_data" / "era5"
     results_path = PROJECT_ROOT / "results" / "example"
-    output_file = results_path / "wind_resource_settings.yml"
+    output_file = results_path / "wind_resource.yml"
 
     results_path.mkdir(exist_ok=True)
 
@@ -42,6 +42,10 @@ def main():
         saveplot=True,
         plotpath=results_path / "plots",
     )
+
+    model.fit_profile()
+    
+
 
 if __name__ == "__main__":
     main()

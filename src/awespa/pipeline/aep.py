@@ -10,7 +10,7 @@ from datetime import datetime
 
 def calculate_aep(
     power_curve_path: Path, 
-    wind_resource_settings_path: Path,
+    wind_resource_path: Path,
     output_path: Optional[Path] = None,
     plot: bool = False,
     plot_output_dir: Optional[Path] = None
@@ -22,7 +22,7 @@ def calculate_aep(
     
     Args:
         power_curve_path: Path to power_curves.yml file.
-        wind_resource_settings_path: Path to wind_resource_settings.yml file.
+        wind_resource_path: Path to wind_resource.yml file.
         output_path: Optional path to save AEP results YAML. If None, no file is saved.
         plot: If True, generate and display/save plots.
         plot_output_dir: Directory to save plots. If None, plots are shown but not saved.
@@ -34,7 +34,7 @@ def calculate_aep(
     with open(power_curve_path, 'r') as f:
         power_data = yaml.safe_load(f)
     
-    with open(wind_resource_settings_path, 'r') as f:
+    with open(wind_resource_path, 'r') as f:
         wind_data = yaml.load(f, Loader=yaml.FullLoader)
     
     # Calculate AEP components
@@ -87,6 +87,26 @@ def _compute_aep_from_data(power_data: Dict[str, Any],
         bin_centers = np.array(power_data['reference_wind_speeds_m_s'])
         power_curves = power_data['power_curves']
         is_new_format = True
+    elif 'reference_wind_speeds' in power_data:
+        # Luchsinger / inertiafree-qsm output format — normalize in-place for plots
+        bin_centers = np.array(power_data['reference_wind_speeds'])
+        for i, profile in enumerate(power_data['power_curves']):
+            if 'cycle_power_w' not in profile:
+                profile['cycle_power_w'] = [
+                    item['performance']['power']['average_cycle_power']
+                    for item in profile['wind_speed_data']
+                ]
+        # Expose under the key the plot functions expect
+        power_data['reference_wind_speeds_m_s'] = power_data['reference_wind_speeds']
+        power_curves = [
+            {
+                'profile_id': p.get('profile_id', i + 1),
+                'probability_weight': p.get('probability_weight', 1.0),
+                'cycle_power_w': p['cycle_power_w'],
+            }
+            for i, p in enumerate(power_data['power_curves'])
+        ]
+        is_new_format = True
     else:
         # Old format
         bin_centers = np.array(power_data['wind_speed_bins']['bin_centers_m_s'])
@@ -94,7 +114,11 @@ def _compute_aep_from_data(power_data: Dict[str, Any],
         is_new_format = False
     
     # Get wind speed bins from wind resource for probability matching
-    wind_bin_centers = np.array(wind_data['wind_speed_bins']['bin_centers_m_s'])
+    wind_speed_bins = wind_data['wind_speed_bins']
+    wind_bin_centers = np.array(
+        wind_speed_bins.get('bin_centers_m_s',
+        wind_speed_bins.get('bin_centers', []))
+    )
     
     # Calculate AEP for each cluster/profile
     cluster_contributions = []
@@ -320,6 +344,11 @@ def _plot_aggregate_power_curve(ax, power_data: Dict[str, Any]) -> None:
         wind_speeds = np.array(power_data['reference_wind_speeds_m_s'])
         powers = np.array(power_data['power_curves'][0]['cycle_power_w']) / 1000  # Convert to kW
         max_power = max(powers)
+    elif 'reference_wind_speeds' in power_data:
+        # Luchsinger format
+        wind_speeds = np.array(power_data['reference_wind_speeds'])
+        powers = np.array(power_data['power_curves'][0]['cycle_power_w']) / 1000  # Convert to kW
+        max_power = max(powers)
     else:
         # Old format
         aggregate = power_data['aggregate_power_curve']
@@ -346,6 +375,13 @@ def _plot_cluster_power_curves(ax, power_data: Dict[str, Any]) -> None:
             powers = np.array(curve['cycle_power_w']) / 1000  # Convert to kW
             ax.plot(wind_speeds, powers, alpha=0.7, 
                     label=f"Profile {curve['profile_id']}")
+    elif 'reference_wind_speeds' in power_data:
+        # Luchsinger format
+        wind_speeds = np.array(power_data['reference_wind_speeds'])
+        for curve in power_data['power_curves']:
+            powers = np.array(curve['cycle_power_w']) / 1000  # Convert to kW
+            ax.plot(wind_speeds, powers, alpha=0.7,
+                    label=f"Profile {curve['profile_id']}")
     else:
         # Old format
         for curve in power_data['cluster_power_curves']:
@@ -365,7 +401,11 @@ def _plot_cluster_power_curves(ax, power_data: Dict[str, Any]) -> None:
 def _plot_wind_speed_distribution(ax, wind_data: Dict[str, Any]) -> None:
     """Plot wind speed probability distribution."""
     probability_matrix = np.array(wind_data['probability_matrix']['data'])
-    bin_centers = np.array(wind_data['wind_speed_bins']['bin_centers_m_s'])
+    _wind_speed_bins = wind_data['wind_speed_bins']
+    bin_centers = np.array(
+        _wind_speed_bins.get('bin_centers_m_s',
+        _wind_speed_bins.get('bin_centers', []))
+    )
     
     # Sum across all clusters (and wind directions if 3D) to get overall distribution
     if probability_matrix.ndim == 3:
@@ -425,6 +465,9 @@ def _plot_wind_rose_power(ax, power_data: Dict[str, Any], wind_data: Dict[str, A
     if 'reference_wind_speeds_m_s' in power_data:
         wind_speeds = np.array(power_data['reference_wind_speeds_m_s'])
         powers = np.array(power_data['power_curves'][0]['cycle_power_w'])
+    elif 'reference_wind_speeds' in power_data:
+        wind_speeds = np.array(power_data['reference_wind_speeds'])
+        powers = np.array(power_data['power_curves'][0]['cycle_power_w'])
     else:
         return
     
@@ -433,7 +476,10 @@ def _plot_wind_rose_power(ax, power_data: Dict[str, Any], wind_data: Dict[str, A
     n_directions = probability_matrix.shape[2]
     power_by_direction = np.zeros(n_directions)
     
-    wind_bin_centers = np.array(wind_data['wind_speed_bins']['bin_centers_m_s'])
+    _wsb = wind_data['wind_speed_bins']
+    wind_bin_centers = np.array(
+        _wsb.get('bin_centers_m_s', _wsb.get('bin_centers', []))
+    )
     powers_interp = np.interp(wind_bin_centers, wind_speeds, powers)
     
     for d in range(n_directions):
@@ -445,7 +491,10 @@ def _plot_wind_rose_power(ax, power_data: Dict[str, Any], wind_data: Dict[str, A
     power_by_direction_kw = power_by_direction / 1000.0
     
     # Wind directions in radians (0 = North, clockwise)
-    direction_bin_width = wind_data['metadata']['wind_direction_bin_width_deg']
+    direction_bin_width = (
+        wind_data['metadata'].get('wind_direction_bin_width_deg') or
+        wind_data['metadata'].get('wind_direction_bin_width', 36.0)
+    )
     theta = np.linspace(0, 2 * np.pi, n_directions, endpoint=False)
     width = np.deg2rad(direction_bin_width)
     
@@ -480,7 +529,10 @@ def _plot_wind_rose_frequency(ax, wind_data: Dict[str, Any]) -> None:
     freq_by_direction = np.sum(probability_matrix, axis=(0, 1)) / 100.0  # Convert % to fraction
     
     # Wind directions in radians (0 = North, clockwise)
-    direction_bin_width = wind_data['metadata']['wind_direction_bin_width_deg']
+    direction_bin_width = (
+        wind_data['metadata'].get('wind_direction_bin_width_deg') or
+        wind_data['metadata'].get('wind_direction_bin_width', 36.0)
+    )
     theta = np.linspace(0, 2 * np.pi, n_directions, endpoint=False)
     width = np.deg2rad(direction_bin_width)
     

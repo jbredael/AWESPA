@@ -37,14 +37,14 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
         """Initialize the Inertia-Free QSM power estimation model."""
         self.constructor: Optional[Any] = None
         self.systemPath: Optional[Path] = None
-        self.windResourceSettingsPath: Optional[Path] = None
+        self.windResourcePath: Optional[Path] = None
         self.simulationSettingsPath: Optional[Path] = None
 
     def load_configuration(
         self,
         system_path: Path,
         simulation_settings_path: Path,
-        wind_resource_settings_path: Path = None,
+        wind_resource_path: Path = None,
     ) -> None:
         """Load power model configuration from YAML files.
 
@@ -56,7 +56,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
                 (awesIO format with wing, tether, ground_station components).
             simulation_settings_path (Path): Path to simulation settings YAML
                 file containing cycle, phase, optimizer, and solver parameters.
-            wind_resource_settings_path (Path): Path to wind resource settings YAML file
+            wind_resource_path (Path): Path to wind resource YAML file
                 containing altitude profiles, clusters, and probability matrix.
 
         Raises:
@@ -70,7 +70,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
 
         self.systemPath = Path(system_path)
         self.simulationSettingsPath = Path(simulation_settings_path)
-        self.windResourceSettingsPath = Path(wind_resource_settings_path) if wind_resource_settings_path else None
+        self.windResourcePath = Path(wind_resource_path) if wind_resource_path else None
 
         # Validate that required files exist
         for label, path in [
@@ -80,15 +80,15 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
             if not path.exists():
                 raise FileNotFoundError(f"{label} file not found: {path}")
 
-        if self.windResourceSettingsPath is not None and not self.windResourceSettingsPath.exists():
+        if self.windResourcePath is not None and not self.windResourcePath.exists():
             raise FileNotFoundError(
-                f"Wind resource settings file not found: {self.windResourceSettingsPath}"
+                f"Wind resource file not found: {self.windResourcePath}"
             )
 
         # Create the PowerCurveConstructor
         self.constructor = PowerCurveConstructor(
             system_config_path=self.systemPath,
-            wind_resource_path=self.windResourceSettingsPath,
+            wind_resource_path=self.windResourcePath,
             simulation_settings_path=self.simulationSettingsPath,
         )
 

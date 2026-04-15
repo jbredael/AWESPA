@@ -18,6 +18,7 @@ Date: January 2026
 """
 
 import sys
+sys.stdout.reconfigure(encoding='utf-8')
 import yaml
 from pathlib import Path
 
@@ -69,15 +70,15 @@ def main():
     print("=" * 80)
     
     # Define paths
-    config_dir = PROJECT_ROOT / "config" / "meridional_case_1"
-    data_dir = PROJECT_ROOT / "data"
-    results_dir = PROJECT_ROOT / "results" / "meridional_case_1"
+    config_dir = PROJECT_ROOT / "config" / "meridional_case1"
+    data_dir = PROJECT_ROOT / "data" / "wind_data" / "era5"
+    results_dir = PROJECT_ROOT / "results" / "meridional_case1"
     
     # Ensure results directory exists
     results_dir.mkdir(parents=True, exist_ok=True)
     
     # Define output file paths
-    wind_resource_settings_path = results_dir / "wind_resource_settings.yml"
+    wind_resource_path = results_dir / "wind_resource.yml"
     power_curves_path = results_dir / "luchsinger_power_curves.yml"
     aep_results_path = results_dir / "luchsinger_aep_results.yml"
     
@@ -95,13 +96,13 @@ def main():
         wind_model = WindProfileClusteringModel()
         
         # Load wind clustering configuration
-        wind_config_path = config_dir / "wind_clustering_config.yml"
+        wind_config_path = config_dir / "wind_clustering_settings_case1.yml"
         
         if not wind_config_path.exists():
             print(f"ERROR: Wind clustering config not found: {wind_config_path}")
             print("Looking for alternative configuration...")
             # Try the main config directory
-            alt_config_path = PROJECT_ROOT / "config" / "wind_clustering_config.yml"
+            alt_config_path = PROJECT_ROOT / "config" / "wind_clustering_settings.yml"
             if alt_config_path.exists():
                 wind_config_path = alt_config_path
                 print(f"Using alternative config: {wind_config_path}")
@@ -121,9 +122,9 @@ def main():
         print("\n[2/3] Performing wind profile clustering...")
         print("This may take several minutes depending on data size...")
         try:
-            wind_model.cluster(data_dir, wind_resource_settings_path)
+            wind_model.cluster(data_dir, wind_resource_path)
             print(f"✓ Wind clustering complete")
-            print(f"✓ Results saved to: {wind_resource_settings_path}")
+            print(f"✓ Results saved to: {wind_resource_path}")
         except Exception as e:
             print(f"✗ Error during wind clustering: {e}")
             import traceback
@@ -133,7 +134,7 @@ def main():
         # Display clustering summary
         print("\n[3/3] Wind clustering summary:")
         try:
-            with open(wind_resource_settings_path, 'r') as f:
+            with open(wind_resource_path, 'r') as f:
                 wind_data = yaml.safe_load(f)
             print(f"  - Number of clusters: {wind_data['metadata']['n_clusters']}")
             print(f"  - Total samples: {wind_data['metadata']['total_samples']}")
@@ -143,8 +144,8 @@ def main():
             print(f"Warning: Could not display summary: {e}")
     else:
         print("\nSkipping wind clustering (using existing results)")
-        if not wind_resource_settings_path.exists():
-            print(f"ERROR: Wind resource settings file not found: {wind_resource_settings_path}")
+        if not wind_resource_path.exists():
+            print(f"ERROR: Wind resource file not found: {wind_resource_path}")
             print("Please run wind clustering first or set run_wind_clustering=True")
             return False
     
@@ -162,23 +163,23 @@ def main():
         power_model = LuchsingerPowerModel()
         
         # Specify configuration file paths (awesIO format)
-        system_path = config_dir / "soft_kite_pumping_ground_gen_system.yml"
-        simulation_settings_path = config_dir / "Lucsinger_simulation_settings_config.yml"
+        system_path = config_dir / "kitepower V3_20.yml"
+        simulation_settings_path = PROJECT_ROOT / "config" / "example" / "luchsinger_settings.yml"
         
         print(f"\nLoading configuration files:")
         print(f"  - System: {system_path.name}")
         print(f"  - Simulation settings: {simulation_settings_path.name}")
-        print(f"  - Wind resource settings: {wind_resource_settings_path.name}")
+        print(f"  - Wind resource: {wind_resource_path.name}")
         
         try:
             power_model.load_configuration(
-                systemPath=system_path,
-                simulationSettingsPath=simulation_settings_path,
-                windResourceSettingsPath=wind_resource_settings_path
+                system_path=system_path,
+                simulation_settings_path=simulation_settings_path,
+                wind_resource_path=wind_resource_path
             )
             print("✓ Power model configuration loaded successfully")
-            print(f"  - Kite area: {power_model.powerModel.wingArea} m²")
-            print(f"  - Tether length: {power_model.powerModel.tetherMaxLength} m")
+            print(f"  - Kite area: {power_model.model.wingArea} m²")
+            print(f"  - Tether length: {getattr(power_model.model, 'tetherMaxLength', getattr(power_model.model, 'nominalTetherForce', 'N/A'))} m")
         except Exception as e:
             print(f"✗ Error loading power model configuration: {e}")
             import traceback
@@ -189,7 +190,7 @@ def main():
         print("\n[2/3] Computing power curves...")
         try:
             power_curve_data = power_model.compute_power_curves(
-                outputPath=power_curves_path
+                output_path=power_curves_path
             )
             print(f"✓ Power curves computed successfully")
         except Exception as e:
@@ -201,29 +202,27 @@ def main():
         # Display power curve summary
         print("\n[3/3] Power curve summary:")
         try:
-            # Check if wind shear data was used (multiple profiles)
-            if 'profiles' in power_curve_data and isinstance(power_curve_data['profiles'], list):
-                n_profiles = len(power_curve_data['profiles'])
-                print(f"  - Number of wind profiles: {n_profiles}")
-                print(f"  - Reference height: {power_curve_data['reference_height_m']} m")
-                print(f"  - Operational altitude: {power_curve_data['operational_altitude_m']:.1f} m")
-                # Show summary for first profile
-                profile_0 = power_curve_data['profiles'][0]
-                max_power = max(profile_0['power'])
-                mean_power = sum(p for p in profile_0['power'] if p > 0) / max(1, sum(1 for p in profile_0['power'] if p > 0))
-                print(f"  - Profile 0: Max power: {max_power/1000:.2f} kW, Mean power: {mean_power/1000:.2f} kW")
-            else:
-                # Single power curve (no wind shear)
-                max_power = max(power_curve_data['power'])
-                mean_power = sum(p for p in power_curve_data['power'] if p > 0) / max(1, sum(1 for p in power_curve_data['power'] if p > 0))
-                rated_idx = list(power_curve_data['power']).index(max_power)
-                rated_wind_speed = power_curve_data['windSpeed'][rated_idx]
-                print(f"  - Rated power: {max_power/1000:.2f} kW")
-                print(f"  - Mean power: {mean_power/1000:.2f} kW")
-                print(f"  - Rated wind speed: {rated_wind_speed:.2f} m/s")
-            
-            print(f"  - Cut-in wind speed: {power_model.powerModel.cutInWindSpeed:.2f} m/s")
-            print(f"  - Cut-out wind speed: {power_model.powerModel.cutOutWindSpeed:.2f} m/s")
+            profiles = power_curve_data.get('power_curves', power_curve_data.get('profiles', []))
+            meta = power_curve_data.get('metadata', {})
+            model_cfg = meta.get('model_config', {})
+            wr_cfg = meta.get('wind_resource', {})
+            n_profiles = len(profiles)
+            print(f"  - Number of wind profiles: {n_profiles}")
+            print(f"  - Reference height: {wr_cfg.get('reference_height', 'N/A')} m")
+            print(f"  - Operational altitude: {model_cfg.get('operating_altitude', 'N/A')} m")
+            if profiles:
+                profile_0 = profiles[0]
+                wind_speed_data = profile_0.get('wind_speed_data', [])
+                if wind_speed_data:
+                    powers = [p['performance']['power']['average_cycle_power'] for p in wind_speed_data]
+                else:
+                    powers = profile_0.get('power', profile_0.get('cycle_power_w', []))
+                if powers:
+                    max_power = max(powers)
+                    mean_power = sum(p for p in powers if p > 0) / max(1, sum(1 for p in powers if p > 0))
+                    print(f"  - Profile 1: Max power: {max_power/1000:.2f} kW, Mean power: {mean_power/1000:.2f} kW")
+            print(f"  - Cut-in wind speed: {power_model.model.cutInWindSpeed:.2f} m/s")
+            print(f"  - Cut-out wind speed: {power_model.model.cutOutWindSpeed:.2f} m/s")
         except Exception as e:
             print(f"Warning: Could not display summary: {e}")
             import traceback
@@ -249,7 +248,7 @@ def main():
         try:
             aep_results = calculate_aep(
                 power_curve_path=power_curves_path,
-                wind_resource_settings_path=wind_resource_settings_path,
+                wind_resource_path=wind_resource_path,
                 output_path=aep_results_path,
                 plot=True,  # Generate plots
                 plot_output_dir=results_dir
@@ -285,7 +284,7 @@ def main():
     print("FULL AEP ANALYSIS COMPLETE!")
     print("=" * 80)
     print(f"\nAll results saved to: {results_dir}")
-    print(f"  - Wind resource settings: {wind_resource_settings_path.name}")
+    print(f"  - Wind resource: {wind_resource_path.name}")
     print(f"  - Power curves: {power_curves_path.name}")
     print(f"  - AEP results: {aep_results_path.name}")
     print(f"  - Plots: aep_analysis_complete.png")

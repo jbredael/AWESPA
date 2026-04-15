@@ -24,7 +24,7 @@ def main():
     configDir = PROJECT_ROOT / "config"
     systemPath = configDir / "example" / "kitepower V3_20.yml"
     simulationSettingsPath = configDir /"example" / "luchsinger_settings.yml"
-    windResourceSettingsPath = configDir / "example" / "wind_resource_settings.yml"
+    windResourcePath = configDir / "example" / "wind_resource.yml"
 
     resultsDir = PROJECT_ROOT / "results" / "example"
     resultsDir.mkdir(parents=True, exist_ok=True)
@@ -36,7 +36,7 @@ def main():
     model.load_configuration(
         system_path=systemPath,
         simulation_settings_path=simulationSettingsPath,
-        wind_resource_settings_path=windResourceSettingsPath,
+        wind_resource_path=windResourcePath,
     )
 
     # ---- single wind speed test ------------------------------------------

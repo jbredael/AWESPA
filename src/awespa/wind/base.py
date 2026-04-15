@@ -22,7 +22,7 @@ class WindProfileModel(ABC):
         """
         pass
 
-    @abstractmethod
+    # The cluster method is NOT defined as an abstract method that must be implemented by all subclasses.
     def cluster(
         self,
         data_path: Path,
