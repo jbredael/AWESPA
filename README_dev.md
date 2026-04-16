@@ -271,7 +271,7 @@ To add a new power estimation model:
 ```bash
 pip install -e .[docs]
 cd docs
-make html
+.\make html
 ```
 
 Documentation is built using Sphinx with the Furo theme.

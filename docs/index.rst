@@ -12,6 +12,7 @@ models, and Annual Energy Production (AEP) calculation.
    :maxdepth: 2
    :caption: Modules
 
+   general_module
    wind_module
    power_module
 
@@ -162,7 +163,7 @@ Complete pipeline example
 
    # --- Step 1: Wind profile clustering ---
    wind_model = WindProfileClusteringModel()
-   wind_model.load_from_yaml(CONFIG / "wind_clustering_settings.yml")
+   wind_model.load_configuration(CONFIG / "wind_clustering_settings.yml")
    wind_model.cluster(
        dataPath=Path("data/wind_data/era5"),
        outputPath=RESULTS / "wind_resource.yml",

@@ -28,22 +28,45 @@ def main():
     # Assuming the wind data is stored in the data directory, adjust as needed
     data_path = PROJECT_ROOT / "data" / "wind_data" / "era5"
     results_path = PROJECT_ROOT / "results" / "example"
-    output_file = results_path / "wind_resource.yml"
+    output_file_cluster = results_path / "wind_resource.yml"
+    output_file_fit = results_path / "wind_resource_profile_fit.yml"
+    output_file_prescribe = results_path / "wind_resource_profile_prescribe.yml"
 
     results_path.mkdir(exist_ok=True)
 
+    # Initialize the wind profile clustering model
     model = WindProfileClusteringModel()
-    model.load_from_yaml(config_path)
+
+    # Load configuration parameters from the YAML file
+    model.load_configuration(config_path)
+
+    # Below are three functionalities of the model that can be called independently. 
+    # Depending on the use case and data availability,
+    #  you can choose how to create a wind resource file with the model. For example, if you only have wind data and want to create a wind resource file based on clustering, you can call only the cluster method. If you already have a wind resource file and want to fit profiles to it, you can call only the fit_profile method. If you want to prescribe analytical profiles without using any data, you can call only the prescribe_profile method. In this example, we will call all three methods sequentially to demonstrate the full workflow of the model.
+    
+    # Perform clustering and export results
     model.cluster(
         dataPath=data_path,
-        outputPath=output_file,
+        outputPath=output_file_cluster,
         verbose=True,
         showplot=True,
         saveplot=True,
-        plotpath=results_path / "plots",
     )
-
-    model.fit_profile()
+    # Fit wind profiles and export results
+    model.fit_profile(
+        dataPath=data_path,
+        outputPath=output_file_fit,
+        verbose=True,
+        showplot=True,
+        saveplot=True,
+    )
+    # Prescribe analytical wind profiles and export results
+    model.prescribe_profile(
+        outputPath=output_file_prescribe,
+        verbose=True,
+        showplot=True,
+        saveplot=True,
+    )
     
 
 

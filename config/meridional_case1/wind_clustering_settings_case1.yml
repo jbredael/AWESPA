@@ -1,22 +1,38 @@
-# Example wind profile clustering configuration
-# This configuration file defines parameters for wind profile clustering
+# Wind profile clustering configuration for meridional case 1
+# This configuration file defines parameters for wind profile clustering,
+# profile fitting, and profile prescribing.
 
-# Clustering parameters
-n_clusters: 8                    # Number of wind profile clusters to identify
-n_pcs: 5                        # Number of principal components for dimensionality reduction
-ref_height: 100.0               # Reference height in meters for normalization
-n_wind_speed_bins: 50           # Number of bins for wind speed probability distribution
+# ============================================================================
+# GENERAL SETTINGS
+# ============================================================================
+ref_height: 100.0               # Reference height [m]
 
-# Data source configuration
+# ============================================================================
+# DATA SOURCE CONFIGURATION
+# ============================================================================
 data_source:
   type: "era5"                  # Data source type: 'era5', 'fgw_lidar', or 'dowa'
-  location:   # Bangor Erris Ireland
-    latitude: 54.126495365765976              # Location latitude in degrees
-    longitude: -9.781335066728756              # Location longitude in degrees
+  location:                     # Bangor Erris Ireland
+    latitude: 54.126495365765976
+    longitude: -9.781335066728756
   altitude_range: [0, 500]      # Altitude range in meters [min, max]
   years: [2011, 2011]           # Year range [start_year, end_year]
+
+# ============================================================================
+# CLUSTERING PARAMETERS
+# ============================================================================
+clustering:
+  n_clusters: 8                 # Number of wind profile clusters to identify
+  n_pcs: 5                      # Number of principal components for dimensionality reduction
+  n_wind_speed_bins: 50         # Number of bins for wind speed probability distribution
+
+  # Metadata for the output file
+  name: "Wind Profile Clustering"
+  description: "Wind profile clustering results"
   
-# Output configuration
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
 output:
   include_plots: true           # Generate visualization plots
   plot_format: "png"            # Plot format: 'png', 'pdf', 'svg'

@@ -93,7 +93,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
             system_config_path=self.systemPath,
             wind_resource_path=self.windResourcePath,
             simulation_settings_path=self.simulationSettingsPath,
-            validate_file=False,
+            validate_file=True,
         )
 
         print(f"Loaded Luchsinger configuration:")

@@ -12,7 +12,7 @@ from .base import WindProfileModel
 try:
     from wind_profile_clustering.clustering import perform_clustering_analysis # type: ignore
     from wind_profile_clustering.export_profiles_and_probabilities_yml import export_wind_profile_shapes_and_probabilities # type: ignore
-    from wind_profile_clustering.plotting import plot_all_results # type: ignore
+    from wind_profile_clustering.plotting import plot_all_results, plot_wind_profile_shapes # type: ignore
     from wind_profile_clustering.fitting_and_prescribing.fit_profile import fit_wind_profile # type: ignore
     from wind_profile_clustering.fitting_and_prescribing.prescribe_profile import prescribe_wind_profile # type: ignore
 except ImportError as e:
@@ -21,6 +21,7 @@ except ImportError as e:
     perform_clustering_analysis = None
     export_wind_profile_shapes_and_probabilities = None
     plot_all_results = None
+    plot_wind_profile_shapes = None
     fit_wind_profile = None
     prescribe_wind_profile = None
 
@@ -37,16 +38,37 @@ class WindProfileClusteringModel(WindProfileModel):
         """Initialize the wind profile clustering model."""
         self.config: Optional[Dict[str, Any]] = None
         self.clusteringResults: Optional[Dict[str, Any]] = None
-        self.nClusters: int = 6
-        self.nPcs: int = 5
         self.refHeight: float = 100.0
-        self.nWindSpeedBins: int = 50
         self.dataSource: str = 'era5'
         self.location: Dict[str, float] = {'latitude': 52.0, 'longitude': 4.0}
         self.altitudeRange: tuple = (0, 500)
         self.years: tuple = (2011, 2017)
+
+        # Clustering defaults
+        self.nClusters: int = 6
+        self.nPcs: int = 5
+        self.nWindSpeedBins: int = 50
+        self.clusterName: str = 'Wind Profile Clustering'
+        self.clusterDescription: str = 'Wind profile clustering results'
+
+        # Fitting defaults
+        self.fitProfileType: str = 'logarithmic'
+        self.fitName: str = 'Wind Profile Fit'
+        self.fitDescription: str = 'Wind profile obtained by fitting an analytical profile to data'
+
+        # Prescribing defaults
+        self.prescribeProfileType: str = 'logarithmic'
+        self.prescribeAltitudeRange: tuple = (0, 500)  # Altitude range [m]
+        self.prescribeMeanWindSpeed: float = 10.0
+        self.prescribeWeibullK: float = 2.0
+        self.prescribeNSamples: int = 100000
+        self.prescribeFrictionVelocity: float = 0.4
+        self.prescribeRoughnessLength: float = 0.03
+        self.prescribeAlpha: float = 0.14
+        self.prescribeName: str = 'Prescribed Wind Profile'
+        self.prescribeDescription: str = 'Wind resource file with a prescribed analytical wind profile'
         
-    def load_from_yaml(self, configPath: Path) -> None:
+    def load_configuration(self, configPath: Path) -> None:
         """Load configuration parameters from a YAML file.
         
         Args:
@@ -55,11 +77,8 @@ class WindProfileClusteringModel(WindProfileModel):
         with open(configPath, 'r') as f:
             self.config = yaml.safe_load(f)
         
-        # Extract clustering parameters
-        self.nClusters = self.config.get('n_clusters', self.nClusters)
-        self.nPcs = self.config.get('n_pcs', self.nPcs)
+        # Extract general settings
         self.refHeight = self.config.get('ref_height', self.refHeight)
-        self.nWindSpeedBins = self.config.get('n_wind_speed_bins', self.nWindSpeedBins)
         
         # Extract data source configuration
         if 'data_source' in self.config:
@@ -68,6 +87,36 @@ class WindProfileClusteringModel(WindProfileModel):
             self.location = dataConfig.get('location', self.location)
             self.altitudeRange = tuple(dataConfig.get('altitude_range', self.altitudeRange))
             self.years = tuple(dataConfig.get('years', self.years))
+
+        # Extract clustering parameters
+        if 'clustering' in self.config:
+            clusterConfig = self.config['clustering']
+            self.nClusters = clusterConfig.get('n_clusters', self.nClusters)
+            self.nPcs = clusterConfig.get('n_pcs', self.nPcs)
+            self.nWindSpeedBins = clusterConfig.get('n_wind_speed_bins', self.nWindSpeedBins)
+            self.clusterName = clusterConfig.get('name', self.clusterName)
+            self.clusterDescription = clusterConfig.get('description', self.clusterDescription)
+
+        # Extract fitting parameters
+        if 'fitting' in self.config:
+            fitConfig = self.config['fitting']
+            self.fitProfileType = fitConfig.get('profile_type', 'logarithmic')
+            self.fitName = fitConfig.get('name', self.fitName)
+            self.fitDescription = fitConfig.get('description', self.fitDescription)
+
+        # Extract prescribing parameters
+        if 'prescribing' in self.config:
+            presConfig = self.config['prescribing']
+            self.prescribeProfileType = presConfig.get('profile_type', 'logarithmic')
+            self.prescribeAltitudeRange = tuple(presConfig.get('altitude_range', (0, 500)))
+            self.prescribeMeanWindSpeed = presConfig.get('mean_wind_speed', 10.0)
+            self.prescribeWeibullK = presConfig.get('weibull_k', 2.0)
+            self.prescribeNSamples = presConfig.get('n_samples', 100000)
+            self.prescribeFrictionVelocity = presConfig.get('friction_velocity', 0.4)
+            self.prescribeRoughnessLength = presConfig.get('roughness_length', 0.03)
+            self.prescribeAlpha = presConfig.get('alpha', 0.14)
+            self.prescribeName = presConfig.get('name', 'Prescribed Wind Profile')
+            self.prescribeDescription = presConfig.get('description', 'Wind resource file with a prescribed analytical wind profile')
     
     def cluster(
         self,
@@ -75,9 +124,7 @@ class WindProfileClusteringModel(WindProfileModel):
         outputPath: Path,
         verbose: bool = False,
         showplot: bool = False,
-        saveplot: bool = False,
-        plotpath: Optional[Path] = None,
-    ) -> None:
+        saveplot: bool = False,) -> None:
         """Perform wind profile clustering on the input data.
 
         Args:
@@ -134,8 +181,8 @@ class WindProfileClusteringModel(WindProfileModel):
         
         # Prepare metadata
         metadata = {
-            'name': f"Wind Profile Clustering - {self.nClusters} Clusters",
-            'description': f"Wind profile clustering results with {self.nClusters} clusters.",
+            'name': self.clusterName,
+            'description': self.clusterDescription,
             'note': "N/A",
             'data_source': self.dataSource.upper(),
             'location': self.location,
@@ -188,9 +235,7 @@ class WindProfileClusteringModel(WindProfileModel):
             new_figs = [plt.figure(n) for n in plt.get_fignums() if n not in fig_nums_before]
 
             if saveplot:
-                if plotpath is None:
-                    raise ValueError("plotpath must be provided when saveplot is True")
-                plotpath = Path(plotpath)
+                plotpath = Path(outputPath).parent / "plots"
                 plotpath.mkdir(parents=True, exist_ok=True)
                 plot_names = [
                     "wind_profile_shapes.pdf",
@@ -221,21 +266,19 @@ class WindProfileClusteringModel(WindProfileModel):
         self,
         dataPath: Path,
         outputPath: Path,
-        profileType: str = 'logarithmic',
-        refHeight: Optional[float] = None,
         verbose: bool = False,
-    ) -> Dict[str, Any]:
+        showplot: bool = False,
+        saveplot: bool = False,) -> Dict[str, Any]:
         """Fit a logarithmic or power law profile to wind data and export to YAML.
 
         Args:
             dataPath (Path): Path to the wind data directory.
             outputPath (Path): Path where output YAML file will be written.
-            profileType (str): Profile type to fit. Either 'logarithmic' or
-                'power_law'. Defaults to 'logarithmic'.
-            refHeight (Optional[float]): Reference height for normalisation in
-                metres. Defaults to the instance attribute refHeight if None.
             verbose (bool): If True, print progress and diagnostic information.
                 Defaults to False.
+            showplot (bool): If True, display plots after fitting.
+                Defaults to False.
+            saveplot (bool): If True, save plots to disk. Defaults to False.
 
         Returns:
             Dict[str, Any]: Dictionary containing the fit results with keys
@@ -245,8 +288,6 @@ class WindProfileClusteringModel(WindProfileModel):
             raise ImportError("Vendor fitting functions not available")
         if export_wind_profile_shapes_and_probabilities is None:
             raise ImportError("Vendor export functions not available")
-
-        usedRefHeight = refHeight if refHeight is not None else self.refHeight
 
         # Load raw wind data
         config = {
@@ -268,10 +309,23 @@ class WindProfileClusteringModel(WindProfileModel):
             )
         rawData = read_data(config)
 
-        if verbose:
-            print(f"Fitting {profileType} wind profile...")
+        # Filter out ground level (altitude=0) to avoid log(0) in logarithmic fitting
+        altitudes = rawData['altitude']
+        validAlt = altitudes > 0
+        if not validAlt.all():
+            nAlt = len(altitudes)
+            rawData = dict(rawData)
+            for key, val in rawData.items():
+                if isinstance(val, np.ndarray):
+                    if val.ndim == 1 and len(val) == nAlt:
+                        rawData[key] = val[validAlt]
+                    elif val.ndim == 2 and val.shape[1] == nAlt:
+                        rawData[key] = val[:, validAlt]
 
-        fitResults = fit_wind_profile(rawData, profileType=profileType, refHeight=usedRefHeight)
+        if verbose:
+            print(f"Fitting {self.fitProfileType} wind profile...")
+
+        fitResults = fit_wind_profile(rawData, profileType=self.fitProfileType, refHeight=self.refHeight)
 
         if verbose:
             print(f"Fit parameters: {fitResults['fitParams']}")
@@ -282,21 +336,17 @@ class WindProfileClusteringModel(WindProfileModel):
             'logarithmic': 'logarithmic  U(z) = (u*/kappa) * ln(z/z0)',
             'power_law': 'power law  U(z) = U_ref * (z/z_ref)**alpha',
         }
-        profileLabel = profileLabels.get(profileType, profileType)
+        profileLabel = profileLabels.get(self.fitProfileType, self.fitProfileType)
         note = (
             f"Wind speed magnitude sqrt(u_east**2 + u_north**2) was computed at each altitude "
             f"and timestep. A {profileLabel} profile was fitted to the time-averaged wind speed "
             f"profile. u_normalized contains the fitted profile normalised to 1 at "
-            f"{usedRefHeight:.0f} m; v_normalized is zero for all altitudes. "
+            f"{self.refHeight:.0f} m; v_normalized is zero for all altitudes. "
             f"Fit parameters: {fitResults['fitParams']}."
         )
-        nameLabel = profileType.replace('_', ' ').title()
         metadata = {
-            'name': f'{dataSourceLabel} Wind Profile {nameLabel} Fit',
-            'description': (
-                f'Wind profile obtained by fitting a {profileType} profile '
-                f'to {dataSourceLabel} data'
-            ),
+            'name': self.fitName,
+            'description': self.fitDescription,
             'note': note,
             'data_source': dataSourceLabel,
             'location': self.location,
@@ -308,7 +358,7 @@ class WindProfileClusteringModel(WindProfileModel):
         }
 
         export_wind_profile_shapes_and_probabilities(
-            fitResults['altitude'],
+            rawData['altitude'],
             fitResults['prl'],
             fitResults['prp'],
             fitResults['labelsFull'],
@@ -318,11 +368,47 @@ class WindProfileClusteringModel(WindProfileModel):
             1,
             str(outputPath),
             metadata=metadata,
-            refHeight=usedRefHeight,
+            refHeight=self.refHeight,
         )
 
         if verbose:
             print(f"Fitted wind profile exported to {outputPath}")
+
+        # Plotting
+        if showplot or saveplot:
+            if plot_wind_profile_shapes is None:
+                raise ImportError("Vendor plotting functions not available")
+
+            altitudes = rawData['altitude']
+            fig_nums_before = set(plt.get_fignums())
+            plot_wind_profile_shapes(altitudes, fitResults['prl'], fitResults['prp'])
+            new_figs = [plt.figure(n) for n in plt.get_fignums() if n not in fig_nums_before]
+
+            # Wind speed distribution histogram
+            fig_hist, ax_hist = plt.subplots(figsize=(6, 4))
+            ax_hist.hist(fitResults['normalisationWindSpeeds'], bins=50, density=True, alpha=0.7)
+            ax_hist.set_xlabel('Wind speed at reference height [m/s]')
+            ax_hist.set_ylabel('Probability density [-]')
+            ax_hist.set_title('Wind Speed Distribution')
+            ax_hist.grid(True)
+            fig_hist.tight_layout()
+            new_figs.append(fig_hist)
+
+            if saveplot:
+                plotpath = Path(outputPath).parent / "plots"
+                plotpath.mkdir(parents=True, exist_ok=True)
+                plot_names = ["fitted_profile_shape.pdf", "fitted_wind_speed_distribution.pdf"]
+                for fig, name in zip(new_figs, plot_names):
+                    fig_file = plotpath / name
+                    fig.savefig(fig_file, bbox_inches='tight')
+                    if verbose:
+                        print(f"Saved: {fig_file}")
+
+            if showplot:
+                plt.show()
+            else:
+                for fig in new_figs:
+                    plt.close(fig)
 
         return {
             'fitResults': fitResults,
@@ -332,51 +418,25 @@ class WindProfileClusteringModel(WindProfileModel):
     def prescribe_profile(
         self,
         outputPath: Path,
-        altitudes: np.ndarray,
-        profileType: str = 'logarithmic',
-        refHeight: float = 200.0,
-        meanWindSpeed: float = 10.0,
-        weibullK: float = 2.0,
-        nSamples: int = 100000,
-        frictionVelocity: float = 0.4,
-        roughnessLength: float = 0.03,
-        alpha: float = 0.14,
-        name: str = 'Prescribed Wind Profile',
-        description: str = 'Wind resource file with a prescribed analytical wind profile',
         verbose: bool = False,
-    ) -> Dict[str, Any]:
+        showplot: bool = False,
+        saveplot: bool = False,) -> Dict[str, Any]:
         """Build a prescribed analytical wind profile and export to YAML.
 
         No measured wind data is required. The wind speed probability
         distribution is a Weibull distribution defined by a mean wind speed
         and shape factor k, with a single omnidirectional wind-direction bin.
 
+        When parameters are None they fall back to values loaded from the
+        configuration file via ``load_configuration``.
+
         Args:
             outputPath (Path): Path where output YAML file will be written.
-            altitudes (np.ndarray): Array of altitudes in metres to evaluate
-                the profile at.
-            profileType (str): Profile type. Either 'logarithmic' or
-                'power_law'. Defaults to 'logarithmic'.
-            refHeight (float): Reference height for profile normalisation in
-                metres. Defaults to 200.0.
-            meanWindSpeed (float): Mean wind speed at reference height in m/s
-                for the Weibull distribution. Defaults to 10.0.
-            weibullK (float): Weibull shape factor k. Defaults to 2.0.
-            nSamples (int): Number of synthetic samples for the wind speed
-                distribution. Defaults to 100000.
-            frictionVelocity (float): Friction velocity u* in m/s. Used when
-                profileType is 'logarithmic'. Defaults to 0.4.
-            roughnessLength (float): Roughness length z0 in metres. Used when
-                profileType is 'logarithmic'. Defaults to 0.03.
-            alpha (float): Power law exponent. Used when profileType is
-                'power_law'. Defaults to 0.14.
-            name (str): Name field for the output metadata. Defaults to
-                'Prescribed Wind Profile'.
-            description (str): Description field for the output metadata.
-                Defaults to 'Wind resource file with a prescribed analytical
-                wind profile'.
             verbose (bool): If True, print progress and diagnostic information.
                 Defaults to False.
+            showplot (bool): If True, display plots after prescribing.
+                Defaults to False.
+            saveplot (bool): If True, save plots to disk. Defaults to False.
 
         Returns:
             Dict[str, Any]: Dictionary containing 'profileParams',
@@ -388,40 +448,42 @@ class WindProfileClusteringModel(WindProfileModel):
         if export_wind_profile_shapes_and_probabilities is None:
             raise ImportError("Vendor export functions not available")
 
-        if verbose:
-            print(f"Building prescribed {profileType} profile...")
 
-        if profileType == 'logarithmic':
+        if verbose:
+            print(f"Building prescribed {self.prescribeProfileType} profile...")
+        altitudes = np.linspace(self.prescribeAltitudeRange[0], self.prescribeAltitudeRange[1], 100)
+
+        if self.prescribeProfileType == 'logarithmic':
             result = prescribe_wind_profile(
-                altitudes,
+                heights=altitudes,
                 profileType='logarithmic',
-                refHeight=refHeight,
-                meanWindSpeed=meanWindSpeed,
-                weibullK=weibullK,
-                nSamples=nSamples,
-                frictionVelocity=frictionVelocity,
-                roughnessLength=roughnessLength,
+                refHeight=self.refHeight,
+                meanWindSpeed=self.prescribeMeanWindSpeed,
+                weibullK=self.prescribeWeibullK,
+                nSamples=self.prescribeNSamples,
+                frictionVelocity=self.prescribeFrictionVelocity,
+                roughnessLength=self.prescribeRoughnessLength,
             )
             paramStr = (
-                f"friction velocity u* = {frictionVelocity} m/s, "
-                f"roughness length z0 = {roughnessLength} m"
+                f"friction velocity u* = {self.prescribeFrictionVelocity} m/s, "
+                f"roughness length z0 = {self.prescribeRoughnessLength} m"
             )
             profileFormula = "U(z) = (u*/kappa) * ln(z/z0)"
-        elif profileType == 'power_law':
+        elif self.prescribeProfileType == 'power_law':
             result = prescribe_wind_profile(
-                altitudes,
+                heights=altitudes,
                 profileType='power_law',
-                refHeight=refHeight,
-                meanWindSpeed=meanWindSpeed,
-                weibullK=weibullK,
-                nSamples=nSamples,
-                alpha=alpha,
+                refHeight=self.refHeight,
+                meanWindSpeed=self.prescribeMeanWindSpeed,
+                weibullK=self.prescribeWeibullK,
+                nSamples=self.prescribeNSamples,
+                alpha=self.prescribeAlpha,
             )
-            paramStr = f"exponent alpha = {alpha}"
+            paramStr = f"exponent alpha = {self.prescribeAlpha}"
             profileFormula = "U(z) = U_ref * (z/z_ref)**alpha"
         else:
             raise ValueError(
-                f"Unknown profile type: {profileType}. "
+                f"Unknown profile type: {self.prescribeProfileType}. "
                 "Choose 'logarithmic' or 'power_law'."
             )
 
@@ -430,22 +492,22 @@ class WindProfileClusteringModel(WindProfileModel):
             print(f"Weibull parameters: {result['weibullParams']}")
 
         note = (
-            f"Profile shape prescribed analytically using a {profileType} profile "
+            f"Profile shape prescribed analytically using a {self.prescribeProfileType} profile "
             f"({profileFormula}) with {paramStr}. "
             f"No measured wind data was used. "
             f"The wind speed probability distribution is a Weibull distribution with "
-            f"mean wind speed {meanWindSpeed} m/s and shape factor k = {weibullK} "
+            f"mean wind speed {self.prescribeMeanWindSpeed} m/s and shape factor k = {self.prescribeWeibullK} "
             f"(Weibull scale parameter lambda = {result['weibullParams']['lambda']:.4f} m/s). "
             f"u_normalized contains the prescribed profile normalised to 1 at "
-            f"{refHeight:.0f} m; v_normalized is zero for all altitudes. "
+            f"{self.refHeight:.0f} m; v_normalized is zero for all altitudes. "
             f"The probability matrix has a single wind-direction bin (omnidirectional)."
         )
         metadata = {
-            'name': name,
-            'description': description,
+            'name': self.prescribeName,
+            'description': self.prescribeDescription,
             'note': note,
             'data_source': 'prescribed_analytical',
-            'altitude_range': [float(altitudes.min()), float(altitudes.max())],
+            'altitude_range': [float(self.prescribeAltitudeRange[0]), float(self.prescribeAltitudeRange[1])],
         }
 
         export_wind_profile_shapes_and_probabilities(
@@ -459,12 +521,47 @@ class WindProfileClusteringModel(WindProfileModel):
             1,
             str(outputPath),
             metadata=metadata,
-            refHeight=refHeight,
+            refHeight=self.refHeight,
             windDirectionBinWidth=360,
         )
 
         if verbose:
             print(f"Prescribed wind profile exported to {outputPath}")
+
+        # Plotting
+        if showplot or saveplot:
+            if plot_wind_profile_shapes is None:
+                raise ImportError("Vendor plotting functions not available")
+
+            fig_nums_before = set(plt.get_fignums())
+            plot_wind_profile_shapes(altitudes, result['prl'], result['prp'])
+            new_figs = [plt.figure(n) for n in plt.get_fignums() if n not in fig_nums_before]
+
+            # Wind speed distribution histogram
+            fig_hist, ax_hist = plt.subplots(figsize=(6, 4))
+            ax_hist.hist(result['normalisationWindSpeeds'], bins=50, density=True, alpha=0.7)
+            ax_hist.set_xlabel('Wind speed at reference height [m/s]')
+            ax_hist.set_ylabel('Probability density [-]')
+            ax_hist.set_title('Wind Speed Distribution (Weibull)')
+            ax_hist.grid(True)
+            fig_hist.tight_layout()
+            new_figs.append(fig_hist)
+
+            if saveplot:
+                plotpath = Path(outputPath).parent / "plots"
+                plotpath.mkdir(parents=True, exist_ok=True)
+                plot_names = ["prescribed_profile_shape.pdf", "prescribed_wind_speed_distribution.pdf"]
+                for fig, name in zip(new_figs, plot_names):
+                    fig_file = plotpath / name
+                    fig.savefig(fig_file, bbox_inches='tight')
+                    if verbose:
+                        print(f"Saved: {fig_file}")
+
+            if showplot:
+                plt.show()
+            else:
+                for fig in new_figs:
+                    plt.close(fig)
 
         return {
             'profileParams': result['profileParams'],

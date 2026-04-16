@@ -1,23 +1,70 @@
 # Example wind profile clustering configuration
-# This configuration file defines parameters for wind profile clustering
+# This configuration file defines parameters for wind profile clustering,
+# profile fitting, and profile prescribing.
 
-# Clustering parameters
-n_clusters: 8                    # Number of wind profile clusters to identify
-n_pcs: 5                        # Number of principal components for dimensionality reduction
-ref_height: 200.0               # Reference height in meters for normalization
-n_wind_speed_bins: 50           # Number of bins for wind speed probability distribution
+# ============================================================================
+# GENERAL SETTINGS
+# ============================================================================
+# Reference height used for wind speed normalisation across all functionalities
+ref_height: 200.0               # Reference height [m]
 
-# Data source configuration
+# ============================================================================
+# DATA SOURCE CONFIGURATION
+# ============================================================================
 data_source:
   type: "era5"                  # Data source type: 'era5', 'fgw_lidar', or 'dowa'
-  location:   # Bangor Erris Ireland
-    latitude: 54.126495365765976              # Location latitude in degrees
-    longitude: -9.781335066728756              # Location longitude in degrees
-  altitude_range: [0, 500]      # Altitude range in meters [min, max]
+  location:                     # Bangor Erris Ireland
+    latitude: 54.126495365765976
+    longitude: -9.781335066728756
+  altitude_range: [10, 500]      # Altitude range in meters [min, max]
   years: [2011, 2011]           # Year range [start_year, end_year]
-  
-# Output configuration
-output:
-  include_plots: true           # Generate visualization plots
-  plot_format: "png"            # Plot format: 'png', 'pdf', 'svg'
-  export_raw_data: false        # Export raw clustering data in addition to YAML
+
+# ============================================================================
+# CLUSTERING PARAMETERS
+# ============================================================================
+# Settings for the cluster() method
+clustering:
+  n_clusters: 8                 # Number of wind profile clusters to identify
+  n_pcs: 5                      # Number of principal components for dimensionality reduction
+  n_wind_speed_bins: 50         # Number of bins for wind speed probability distribution
+
+  # Metadata for the output file
+  name: "Wind Profile Clustering"
+  description: "Wind profile clustering results"
+
+# ============================================================================
+# FITTING PARAMETERS
+# ============================================================================
+# Settings for the fit_profile() method.
+# Fits an analytical wind profile to measured data.
+fitting:
+  profile_type: "logarithmic"   # Profile type to fit: 'logarithmic' or 'power_law'
+
+  # Metadata for the output file
+  name: "Wind Profile Fit"
+  description: "Wind profile obtained by fitting an analytical profile to data"
+
+# ============================================================================
+# PRESCRIBING PARAMETERS
+# ============================================================================
+# Settings for the prescribe_profile() method.
+# Builds a prescribed analytical wind profile without measured data.
+prescribing:
+  profile_type: "logarithmic"   # Profile type: 'logarithmic' or 'power_law'
+  altitude_range: [10, 500]  # Altitudes to evaluate [m]
+
+  # Weibull wind speed distribution
+  mean_wind_speed: 10.0         # Mean wind speed at reference height [m/s]
+  weibull_k: 2.0                # Weibull shape factor k [-]
+  n_samples: 100000             # Number of synthetic samples for wind speed distribution
+
+  # Logarithmic profile parameters (used when profile_type is 'logarithmic')
+  friction_velocity: 0.4        # Friction velocity u* [m/s]
+  roughness_length: 0.03        # Roughness length z0 [m]
+
+  # Power law profile parameters (used when profile_type is 'power_law')
+  alpha: 0.14                   # Power law exponent [-]
+
+  # Metadata for the output file
+  name: "Prescribed Wind Profile"
+  description: "Wind resource file with a prescribed analytical wind profile"

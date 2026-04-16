@@ -112,7 +112,7 @@ def main():
         
         print(f"Loading configuration from: {wind_config_path}")
         try:
-            wind_model.load_from_yaml(wind_config_path)
+            wind_model.load_configuration(wind_config_path)
             print("✓ Wind clustering configuration loaded successfully")
         except Exception as e:
             print(f"✗ Error loading wind configuration: {e}")

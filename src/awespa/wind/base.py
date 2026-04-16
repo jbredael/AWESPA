@@ -14,7 +14,7 @@ class WindProfileModel(ABC):
     """
 
     @abstractmethod
-    def load_from_yaml(self, config_path: Path) -> None:
+    def load_configuration(self, config_path: Path) -> None:
         """Load configuration parameters from a YAML file.
 
         Args:
@@ -29,8 +29,7 @@ class WindProfileModel(ABC):
         output_path: Path,
         verbose: bool = False,
         showplot: bool = False,
-        saveplot: bool = False,
-        plotpath: Optional[Path] = None,) -> None:
+        saveplot: bool = False,) -> None:
         """Perform wind profile clustering on the input data.
 
         Args:
