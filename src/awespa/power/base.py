@@ -18,7 +18,8 @@ class PowerEstimationModel(ABC):
         self, 
         system_path: Path,
         simulation_settings_path: Path = None,
-        operational_constraints_path: Path = None
+        operational_constraints_path: Path = None,
+        validate: bool = True,
     ) -> None:
         """Load power model configuration from YAML files.
         
@@ -28,6 +29,8 @@ class PowerEstimationModel(ABC):
                 May be None if model does not require simulation settings.
             operational_constraints_path: Path to operational constraints YAML file.
                 May be None if model does not require operational constraints.
+            validate (bool): If True, validate configuration files using
+                the awesIO validator. Defaults to True.
         """
         pass
     
@@ -38,7 +41,7 @@ class PowerEstimationModel(ABC):
         verbose: bool = False,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None
+        validate: bool = True,
     ) -> None:
         """Compute power curves and optionally export/plot.
         
@@ -51,7 +54,8 @@ class PowerEstimationModel(ABC):
             verbose: Whether to print verbose output.
             showplot: Whether to display plots.
             saveplot: Whether to save plots to file.
-            plot_path: Path where plots will be saved if saveplot is True.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
         
         Returns:
             None
@@ -66,7 +70,7 @@ class PowerEstimationModel(ABC):
         verbose: bool = False,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None
+        validate: bool = True,
     ) -> float:
         """Calculate power output at a single wind speed.
         
@@ -77,8 +81,9 @@ class PowerEstimationModel(ABC):
             verbose: Whether to print verbose output.
             showplot: Whether to display plots for this wind speed.
             saveplot: Whether to save plots for this wind speed to file.
-            plot_path: Path where plots will be saved if saveplot is True.
-            
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
+
         Returns:
             Power output in W.
         """

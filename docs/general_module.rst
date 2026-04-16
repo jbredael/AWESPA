@@ -13,11 +13,6 @@ All module classes expose a **``load_configuration``** method that accepts one
 or more YAML file paths. This file contains every setting and parameter the
 module needs, making analyses reproducible and easy to share.
 
-The YAML files are organised into clear sections (e.g. system parameters,
-simulation settings, optimisation settings) so users can modify parameters and
-run different scenarios without changing the underlying code. The exact format
-expected by each module is documented in the respective module pages.
-
 
 Main Functionality
 ------------------
@@ -40,6 +35,9 @@ method accepts the following four keyword arguments:
 ``saveplot``
     If ``True``, save plots to disk in the directory derived from
     ``outputPath``.
+``validate``
+    If ``True``, validate the output file against the awesIO schema. This is
+    enabled by default but can be disabled when experimenting or developing.
 
 These conventions ensure a uniform interface across all modules.
 
@@ -59,18 +57,18 @@ whether they follow the awesIO standard.
      - Output files / data
    * - ``WindProfileClusteringModel``
      - | Raw wind data (NetCDF for ERA5, lidar, or DOWA)
-       | ``wind_clustering_settings`` (YAML, non-awesIO)
+       | wind_clustering_settings (YAML, non-awesIO)
      - Wind resource file (YAML, awesIO)
    * - ``LuchsingerPowerModel``
      - | System configuration (YAML, awesIO)
        | Wind resource file (YAML, awesIO)
-       | ``luchsinger_settings`` (YAML, non-awesIO)
+       | luchsinger_settings (YAML, non-awesIO)
      - | Power curves file (YAML, awesIO)
        | Time-history file (``.npz``, related to awesIO)
    * - ``InertiaFreeQSMPowerModel``
      - | System configuration (YAML, awesIO)
        | Wind resource file (YAML, awesIO)
-       | ``qsm_settings`` (YAML, non-awesIO)
+       | qsm_settings (YAML, non-awesIO)
      - Power curves file (YAML, awesIO)
 
 
@@ -88,9 +86,11 @@ A tool can be added as an AWESPA module when it satisfies all of the following:
    can be handled by the wrapper or by the underlying code, but the wrapper
    must be able to read the YAML file and forward the settings.
 
-3. **awesIO-compliant output** -- the tool must write its outputs to a
+3. **awesIO-compliant input and output** -- the tool must read its inputs from
+   user-specified paths following the awesIO standard and write its outputs to a
    user-specified path following the awesIO standard, ensuring compatibility
    with downstream modules.
+   Or the wrapper must be able to take in awesIO-compliant input files, convert them to the format required by the underlying code, execute the tool, and convert the output back to awesIO format.
 
 4. **ABC compliance** -- the wrapper must implement the abstract base class of
    the module category it belongs to (e.g. power-estimation models implement

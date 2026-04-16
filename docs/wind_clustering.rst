@@ -18,14 +18,22 @@ which is the shared input for the power module and the AEP pipeline.
 Supported data sources
 ----------------------
 
+For these data sources there are already built-in readers, so users can simply point to the raw data files and the wrapper will handle the rest:
+
 * ``era5`` — ERA5 reanalysis data (NetCDF files from Copernicus)
+    The convention is to organise the ERA5 files in a directory structure like
+    ``data/wind_data/era5/<year>/ml_<YYYY>_<MM>.netcdf``. For the surface files the convention is similar but with ``sfc_<YYYY>_<MM>.netcdf``. The wrapper will automatically find and read all files in the specified year range.
 * ``fgw_lidar`` — FGW lidar measurement files
 * ``dowa`` — Dutch Offshore Wind Atlas data
+
+For DOWA data, download the time series files from 2008-2017 at 10-600 meter height for your desired grid location.
+
+For ERA5 data, take a look at the following repo that explains how to download ERA5 data using the CDS API: https://github.com/awegroup/awe-era5. It also mentions a pre-downloaded ERA5 dataset from 2011-2017 covering Europe.
 
 The wrapper automatically selects the correct data reader based on the
 ``data_source.type`` setting in the configuration file.
 
-API reference
+Wrapper
 -------------
 
 .. autoclass:: awespa.wind.clustering.WindProfileClusteringModel
@@ -58,7 +66,7 @@ prescribing. An annotated example is shown below
      location:
        latitude: 54.13
        longitude: -9.78
-     altitude_range: [0, 500]      # [m]
+     altitude_range: [10, 500]     # [m]
      years: [2011, 2011]           # inclusive
 
    # ============================================================================
@@ -69,18 +77,26 @@ prescribing. An annotated example is shown below
      n_pcs: 5                      # Principal components retained
      n_wind_speed_bins: 50         # Bins for wind speed probability distribution
 
+     # Metadata for the output file
+     name: "Wind Profile Clustering"
+     description: "Wind profile clustering results"
+
    # ============================================================================
    # FITTING PARAMETERS
    # ============================================================================
    fitting:
      profile_type: "logarithmic"   # 'logarithmic' or 'power_law'
 
+     # Metadata for the output file
+     name: "Wind Profile Fit"
+     description: "Wind profile obtained by fitting an analytical profile to data"
+
    # ============================================================================
    # PRESCRIBING PARAMETERS
    # ============================================================================
    prescribing:
      profile_type: "logarithmic"   # 'logarithmic' or 'power_law'
-     altitudes: [10, 50, 100, 150, 200, 250, 300, 400, 500]
+     altitude_range: [10, 500]     # Altitudes to evaluate [m]
 
      # Weibull wind speed distribution
      mean_wind_speed: 10.0         # Mean wind speed at ref_height [m/s]
@@ -94,13 +110,20 @@ prescribing. An annotated example is shown below
      # Power law profile parameters
      alpha: 0.14                   # Power law exponent [-]
 
-     # Metadata
+     # Metadata for the output file
      name: "Prescribed Wind Profile"
      description: "Wind resource file with a prescribed analytical wind profile"
 
 
 Usage examples
 --------------
+
+Using the ready-made script:
+
+.. code-block:: bash
+
+   python scripts/run_wind_clustering.py
+
 
 Clustering
 ~~~~~~~~~~
@@ -119,14 +142,7 @@ Clustering
        verbose=True,
        showplot=False,
        saveplot=True,
-       plotpath=Path("results/example/plots"),
    )
-
-Or use the ready-made script:
-
-.. code-block:: bash
-
-   python scripts/run_wind_clustering.py
 
 Fitting a profile
 ~~~~~~~~~~~~~~~~~
@@ -142,7 +158,6 @@ Fitting a profile
        verbose=True,
        showplot=False,
        saveplot=True,
-       plotpath=Path("results/example/plots"),
    )
 
 Prescribing a profile
@@ -158,19 +173,4 @@ Prescribing a profile
        verbose=True,
        showplot=False,
        saveplot=True,
-       plotpath=Path("results/example/plots"),
    )
-
-
-Output
-------
-
-All three methods write a single YAML file in awesIO format containing:
-
-* Altitude vector
-* Wind profile shapes (parallel and perpendicular components) per cluster
-* Wind speed bins and probability matrix (clusters × wind speed bins)
-* Cluster occurrence frequencies
-* Metadata (location, time range, clustering/fitting/prescribing parameters)
-
-This file is the input for the power module and the AEP pipeline.

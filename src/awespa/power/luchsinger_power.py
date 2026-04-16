@@ -11,6 +11,11 @@ from typing import Dict, Any, Optional, List, Union
 from .base import PowerEstimationModel
 
 try:
+    from awesio.validator import validate as awesio_validate  # type: ignore
+except ImportError:
+    awesio_validate = None
+
+try:
     from power_luchsinger.power_model import PowerModel  # type: ignore
 except ImportError as e:
     print(f"Import error for LuchsingerPowerModel: {e}")
@@ -42,6 +47,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
         simulation_settings_path: Path,
         operational_constraints_path: Path = None,
         wind_resource_path: Path = None,
+        validate: bool = True,
     ) -> None:
         """Load power model configuration from YAML files.
 
@@ -57,6 +63,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 Defaults to None.
             wind_resource_path (Path): Path to wind resource YAML file
                 containing altitude profiles, clusters, and probability matrix.
+            validate (bool): If True, validate configuration files using
+                the awesIO validator. Defaults to True.
 
         Raises:
             ImportError: If the vendored PowerModel cannot be imported.
@@ -93,7 +101,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
             system_config_path=self.systemPath,
             wind_resource_path=self.windResourcePath,
             simulation_settings_path=self.simulationSettingsPath,
-            validate_file=True,
+            validate_file=validate,
         )
 
         print(f"Loaded Luchsinger configuration:")
@@ -115,7 +123,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None,
+        validate: bool = True,
     ) -> Dict[str, Any]:
         """Compute power curves for all wind shear profiles and optionally export.
 
@@ -131,8 +139,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
                 Defaults to False.
             saveplot (bool): Whether to save plots to file alongside the
                 YAML output. Requires ``output_path``. Defaults to False.
-            plot_path (Path): Not used directly; plots are saved alongside
-                ``output_path`` when ``saveplot`` is True. Defaults to None.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             dict: Power curve data with keys ``'reference_height_m'``,
@@ -157,7 +165,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
             verbose=verbose,
             show_plot=showplot,
             save_plot=saveplot,
-            validate_file=False,
+            validate_file=validate,
         )
 
         return data
@@ -170,7 +178,7 @@ class LuchsingerPowerModel(PowerEstimationModel):
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None,
+        validate: bool = True,
     ) -> Union[float, List[float]]:
         """Calculate power output at a single wind speed.
 
@@ -186,7 +194,8 @@ class LuchsingerPowerModel(PowerEstimationModel):
             verbose (bool): Whether to print the result. Defaults to True.
             showplot (bool): Not used. Defaults to False.
             saveplot (bool): Not used. Defaults to False.
-            plot_path (Path): Not used. Defaults to None.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             Union[float, List[float]]: Cycle power output [W]. Returns a

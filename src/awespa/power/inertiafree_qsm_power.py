@@ -12,6 +12,11 @@ from typing import Dict, Any, Optional, List
 from .base import PowerEstimationModel
 
 try:
+    from awesio.validator import validate as awesio_validate  # type: ignore
+except ImportError:
+    awesio_validate = None
+
+try:
     from inertiafree_qsm import PowerCurveConstructor  # type: ignore
 except ImportError as e:
     print(f"Import error for InertiaFree-QSM: {e}")
@@ -45,6 +50,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
         system_path: Path,
         simulation_settings_path: Path,
         wind_resource_path: Path = None,
+        validate: bool = True,
     ) -> None:
         """Load power model configuration from YAML files.
 
@@ -58,6 +64,8 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
                 file containing cycle, phase, optimizer, and solver parameters.
             wind_resource_path (Path): Path to wind resource YAML file
                 containing altitude profiles, clusters, and probability matrix.
+            validate (bool): If True, validate configuration files using
+                the awesIO validator. Defaults to True.
 
         Raises:
             ImportError: If the vendored PowerCurveConstructor cannot be imported.
@@ -85,6 +93,15 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
                 f"Wind resource file not found: {self.windResourcePath}"
             )
 
+        # Validate configuration files
+        if validate:
+            if awesio_validate is None:
+                raise ImportError("awesIO validator not available")
+            awesio_validate(input=self.systemPath)
+            if self.windResourcePath is not None:
+                awesio_validate(input=self.windResourcePath)
+            print("Configuration files validated.")
+
         # Create the PowerCurveConstructor
         self.constructor = PowerCurveConstructor(
             system_config_path=self.systemPath,
@@ -104,7 +121,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None,
+        validate: bool = True,
     ) -> Dict[str, Any]:
         """Compute power curves using direct simulation or optimization.
 
@@ -124,9 +141,8 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
                 Defaults to False.
             saveplot (bool): Whether to save plots to file. Requires
                 ``output_path``. Defaults to False.
-            plot_path (Path): Path where plots will be saved. If None and
-                ``saveplot`` is True, plots are saved alongside the YAML.
-                Defaults to None.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             dict: Power curve data in awesIO format.
@@ -166,6 +182,12 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
 
         if output_path is not None:
             print(f"Power curves exported to: {output_path}")
+            if validate:
+                if awesio_validate is None:
+                    raise ImportError("awesIO validator not available")
+                awesio_validate(input=output_path)
+                if verbose:
+                    print(f"Output validated: {output_path}")
 
         return data
 
@@ -178,7 +200,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
-        plot_path: Path = None,
+        validate: bool = True,
     ) -> float:
         """Calculate power output at a single wind speed.
 
@@ -199,7 +221,8 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
                 Defaults to False.
             saveplot (bool): Whether to save cycle detail plot. Requires
                 ``output_path``. Defaults to False.
-            plot_path (Path): Path where plots will be saved. Defaults to None.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             float: Average cycle power output [W].

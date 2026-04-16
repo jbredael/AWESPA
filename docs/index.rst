@@ -8,14 +8,6 @@ A modular Python toolchain for assessing Airborne Wind Energy (AWE) system
 performance using wind profile clustering, physics-based power estimation
 models, and Annual Energy Production (AEP) calculation.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Modules
-
-   general_module
-   wind_module
-   power_module
-
 Getting Started
 ===============
 
@@ -28,13 +20,11 @@ AWESPA provides a complete, three-step pipeline:
    via clustering. See :doc:`wind_module`.
 2. **Power module** — Compute power curves for each wind profile cluster using
    a physics-based model. See :doc:`power_module`.
-3. **Pipeline** — Combine the wind resource and power curves to produce AEP,
-   capacity factor, and cluster contributions.
+3. **Pipeline** — Scripts which are not referring to an external library, this is a helper module that already contains for example the AEP calculation.
 
-All inter-module data is exchanged through awesIO-format YAML files, so the
+All inter-module data is exchanged through the awesIO-format YAML files as much as possible, so the
 output of one step is directly readable by the next. Each module follows an
-Abstract Base Class interface, making it straightforward to swap in alternative
-implementations.
+Abstract Base Class interface, making it straightforward to swap in other models of the same module. The setting files for each module are also YAML-based, ensuring that the entire analysis is reproducible from a single configuration file. But these configuration files are not in awesIO format.
 
 Project Structure
 -----------------
@@ -53,7 +43,7 @@ Project Structure
    ├── src/awespa/                # Package source code
    │   ├── wind/                  # Wind module
    │   ├── power/                 # Power module
-   │   └── pipeline/              # AEP pipeline
+   │   └── pipeline/              # Pipline scripts and utilities
    ├── tests/                     # Test suite
    └── docs/                      # This documentation
 
@@ -115,7 +105,7 @@ Installation Instructions
 
 .. note::
 
-   The three physics-based dependencies (``inertiafree-qsm``,
+   The three dependencies (``inertiafree-qsm``,
    ``power-luchsinger``, ``wind-profile-clustering``) are fetched
    automatically from GitHub during ``pip install``. Git must be available
    on your ``PATH``.
@@ -170,7 +160,6 @@ Complete pipeline example
        verbose=True,
        showplot=False,
        saveplot=True,
-       plotpath=RESULTS / "plots",
    )
 
    # --- Step 2: Power curve generation ---
@@ -232,6 +221,16 @@ License
 =======
 
 MIT License — Copyright (c) 2024 Airborne Wind Energy Research Group, TU Delft
+
+API Reference
+=============
+
+.. toctree::
+   :maxdepth: 2
+
+   general_module
+   wind_module
+   power_module
 
 Indices and Tables
 ==================

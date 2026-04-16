@@ -8,6 +8,11 @@ from typing import Dict, Any, Optional
 
 from .base import WindProfileModel
 
+try:
+    from awesio.validator import validate as awesio_validate  # type: ignore
+except ImportError:
+    awesio_validate = None
+
 # Import vendor clustering functionality
 try:
     from wind_profile_clustering.clustering import perform_clustering_analysis # type: ignore
@@ -68,11 +73,13 @@ class WindProfileClusteringModel(WindProfileModel):
         self.prescribeName: str = 'Prescribed Wind Profile'
         self.prescribeDescription: str = 'Wind resource file with a prescribed analytical wind profile'
         
-    def load_configuration(self, configPath: Path) -> None:
+    def load_configuration(self, configPath: Path, validate: bool = True) -> None:
         """Load configuration parameters from a YAML file.
         
         Args:
             configPath (Path): Path to the YAML configuration file.
+            validate (bool): If True, validate configuration files using
+                the awesIO validator. Defaults to True.
         """
         with open(configPath, 'r') as f:
             self.config = yaml.safe_load(f)
@@ -124,7 +131,9 @@ class WindProfileClusteringModel(WindProfileModel):
         outputPath: Path,
         verbose: bool = False,
         showplot: bool = False,
-        saveplot: bool = False,) -> None:
+        saveplot: bool = False,
+        validate: bool = True,
+    ) -> None:
         """Perform wind profile clustering on the input data.
 
         Args:
@@ -135,8 +144,8 @@ class WindProfileClusteringModel(WindProfileModel):
             showplot (bool): If True, display plots after clustering.
                 Defaults to False.
             saveplot (bool): If True, save plots to disk. Defaults to False.
-            plotpath (Optional[Path]): Directory where plots are saved.
-                Required if saveplot is True. Defaults to None.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
         """
         # Check if vendor functions are available
         if perform_clustering_analysis is None:
@@ -217,6 +226,14 @@ class WindProfileClusteringModel(WindProfileModel):
         if verbose:
             print(f"Wind profile clustering results exported to {outputPath}")
 
+        # Validate output file
+        if validate:
+            if awesio_validate is None:
+                raise ImportError("awesIO validator not available")
+            awesio_validate(input=outputPath)
+            if verbose:
+                print(f"Output validated: {outputPath}")
+
         # Plotting
         if showplot or saveplot:
             if plot_all_results is None:
@@ -268,7 +285,9 @@ class WindProfileClusteringModel(WindProfileModel):
         outputPath: Path,
         verbose: bool = False,
         showplot: bool = False,
-        saveplot: bool = False,) -> Dict[str, Any]:
+        saveplot: bool = False,
+        validate: bool = True,
+    ) -> Dict[str, Any]:
         """Fit a logarithmic or power law profile to wind data and export to YAML.
 
         Args:
@@ -279,6 +298,8 @@ class WindProfileClusteringModel(WindProfileModel):
             showplot (bool): If True, display plots after fitting.
                 Defaults to False.
             saveplot (bool): If True, save plots to disk. Defaults to False.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             Dict[str, Any]: Dictionary containing the fit results with keys
@@ -374,6 +395,14 @@ class WindProfileClusteringModel(WindProfileModel):
         if verbose:
             print(f"Fitted wind profile exported to {outputPath}")
 
+        # Validate output file
+        if validate:
+            if awesio_validate is None:
+                raise ImportError("awesIO validator not available")
+            awesio_validate(input=outputPath)
+            if verbose:
+                print(f"Output validated: {outputPath}")
+
         # Plotting
         if showplot or saveplot:
             if plot_wind_profile_shapes is None:
@@ -420,7 +449,9 @@ class WindProfileClusteringModel(WindProfileModel):
         outputPath: Path,
         verbose: bool = False,
         showplot: bool = False,
-        saveplot: bool = False,) -> Dict[str, Any]:
+        saveplot: bool = False,
+        validate: bool = True,
+    ) -> Dict[str, Any]:
         """Build a prescribed analytical wind profile and export to YAML.
 
         No measured wind data is required. The wind speed probability
@@ -437,6 +468,8 @@ class WindProfileClusteringModel(WindProfileModel):
             showplot (bool): If True, display plots after prescribing.
                 Defaults to False.
             saveplot (bool): If True, save plots to disk. Defaults to False.
+            validate (bool): If True, validate the output YAML file using
+                the awesIO validator. Defaults to True.
 
         Returns:
             Dict[str, Any]: Dictionary containing 'profileParams',
@@ -527,6 +560,14 @@ class WindProfileClusteringModel(WindProfileModel):
 
         if verbose:
             print(f"Prescribed wind profile exported to {outputPath}")
+
+        # Validate output file
+        if validate:
+            if awesio_validate is None:
+                raise ImportError("awesIO validator not available")
+            awesio_validate(input=outputPath)
+            if verbose:
+                print(f"Output validated: {outputPath}")
 
         # Plotting
         if showplot or saveplot:

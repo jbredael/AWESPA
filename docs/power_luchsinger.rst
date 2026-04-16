@@ -11,7 +11,7 @@ pumping cycle into a reel-out (traction) and a reel-in (retraction) phase.
 The wrapper maps three awesIO configuration files to the underlying
 ``PowerModel`` constructor and exposes the AWESPA standard interface.
 
-API reference
+Wrapper
 -------------
 
 .. autoclass:: awespa.power.luchsinger_power.LuchsingerPowerModel
@@ -93,7 +93,11 @@ Usage example
    )
 
    # Single operating point
-   power_w = model.calculate_power_at_wind_speed(wind_speed=10.0, verbose=True)
+   power_w = model.calculate_power_at_wind_speed(
+       wind_speed=10.0,
+       verbose=True,
+       validate=True,
+   )
    print(f"Power at 10 m/s: {power_w / 1000:.1f} kW")
 
 Or use the ready-made script:
