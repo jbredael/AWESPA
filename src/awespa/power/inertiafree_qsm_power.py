@@ -114,10 +114,10 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
 
     def compute_power_curves(
         self,
-        output_path: Path = None,
         method: str = "direct",
         wind_speeds: Optional[np.ndarray] = None,
         cluster_ids: Optional[List[int]] = None,
+        output_path: Path = None,
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
