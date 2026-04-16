@@ -95,8 +95,8 @@ Usage example
    # Single operating point
    power_w = model.calculate_power_at_wind_speed(
        wind_speed=10.0,
+       selected_profile=1,
        verbose=True,
-       validate=True,
    )
    print(f"Power at 10 m/s: {power_w / 1000:.1f} kW")
 

@@ -66,6 +66,7 @@ class PowerEstimationModel(ABC):
     def calculate_power_at_wind_speed(
         self,
         wind_speed: float,
+        selected_profile: int = 1,
         output_path: Path = None,
         verbose: bool = False,
         showplot: bool = False,
@@ -76,6 +77,8 @@ class PowerEstimationModel(ABC):
         
         Args:
             wind_speed: Wind speed in m/s.
+            selected_profile: Profile index (1-indexed) for wind shear
+                selection. Defaults to 1.
             output_path: Path where results will be written. If None,
                 no export is performed.
             verbose: Whether to print verbose output.
@@ -85,7 +88,7 @@ class PowerEstimationModel(ABC):
                 the awesIO validator. Defaults to True.
 
         Returns:
-            Power output in W.
+            Average cycle power output [W].
         """
         pass
     

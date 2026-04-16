@@ -6,7 +6,7 @@ directly and computes power curves using wind shear profiles from a wind resourc
 
 import numpy as np
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional
 
 from .base import PowerEstimationModel
 
@@ -173,74 +173,47 @@ class LuchsingerPowerModel(PowerEstimationModel):
     def calculate_power_at_wind_speed(
         self,
         wind_speed: float,
-        selected_profiles: list = None,
+        selected_profile: int = 1,
         output_path: Path = None,
         verbose: bool = True,
         showplot: bool = False,
         saveplot: bool = False,
         validate: bool = True,
-    ) -> Union[float, List[float]]:
+    ) -> float:
         """Calculate power output at a single wind speed.
 
-        Uses the first matching wind cluster profile to derive the wind shear
+        Uses the selected wind cluster profile to derive the wind shear
         and calls the Luchsinger model for a single operating point.
 
         Args:
             wind_speed (float): Wind speed at reference height [m/s].
-            selected_profiles (list): Optional list of profile indices.
-                If None, all profiles are simulated.
-            output_path (Path): Not used; Luchsinger model does not support
+            selected_profile (int): Profile index (1-indexed). Defaults to 1.
+            output_path (Path): Not used; the vendor model does not support
                 single-point export. Defaults to None.
             verbose (bool): Whether to print the result. Defaults to True.
             showplot (bool): Not used. Defaults to False.
             saveplot (bool): Not used. Defaults to False.
-            validate (bool): If True, validate the output YAML file using
-                the awesIO validator. Defaults to True.
+            validate (bool): Not used for single-point evaluation.
+                Defaults to True.
 
         Returns:
-            Union[float, List[float]]: Cycle power output [W]. Returns a
-                list with one power value per profile when multiple profiles
-                are simulated. Returns a scalar when only one profile is
-                requested.
+            float: Average cycle power output [W].
 
         Raises:
             ValueError: If model is not initialized.
-            KeyError: If simulation output does not include a power key.
         """
         if self.model is None:
             raise ValueError(
                 "Power model not initialized. Call load_configuration first."
             )
-
-        simulation_data = self.model.simulate_cycle_at_one_wind_speed(
-            wind_speed,
-            selected_profiles=selected_profiles,
+        results = self.model.simulate_cycle_at_one_wind_speed(
+            ws_ref=wind_speed,
+            selected_profiles=[selected_profile - 1],  # Convert 1-indexed to 0-indexed
             verbose=verbose,
         )
 
-        if isinstance(simulation_data, dict):
-            simulation_data = [simulation_data]
-
-        powers = []
-        for profile_data in simulation_data:
-            if "cyclePower" in profile_data:
-                powers.append(profile_data["cyclePower"])
-            elif "average_cycle_power_W" in profile_data:
-                powers.append(profile_data["average_cycle_power_W"])
-            else:
-                raise KeyError(
-                    "Simulation output is missing 'cyclePower' and "
-                    "'average_cycle_power_W'."
-                )
-
-        single_profile_requested = (
-            selected_profiles is not None and len(selected_profiles) == 1
-        )
-
-        if single_profile_requested or len(powers) == 1:
-            return powers[0]
-
-        return powers
+        power = float(results[0]["cyclePower"])
+        return power
 
     def plot_power_curves(
         self,
