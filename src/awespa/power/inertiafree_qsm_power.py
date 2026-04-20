@@ -251,7 +251,7 @@ class InertiaFreeQSMPowerModel(PowerEstimationModel):
             windSpeedData = powerCurves[0].get("wind_speed_data", [])
             if windSpeedData:
                 power = windSpeedData[0]["performance"]["power"][
-                    "average_cycle_power_w"
+                    "average_cycle_power"
                 ]
                 if verbose:
                     print(

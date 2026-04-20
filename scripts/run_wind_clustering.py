@@ -52,21 +52,21 @@ def main():
         showplot=True,
         saveplot=True,
     )
-    # Fit wind profiles and export results
-    model.fit_profile(
-        dataPath=data_path,
-        outputPath=output_file_fit,
-        verbose=True,
-        showplot=True,
-        saveplot=True,
-    )
-    # Prescribe analytical wind profiles and export results
-    model.prescribe_profile(
-        outputPath=output_file_prescribe,
-        verbose=True,
-        showplot=True,
-        saveplot=True,
-    )
+    # # Fit wind profiles and export results
+    # model.fit_profile(
+    #     dataPath=data_path,
+    #     outputPath=output_file_fit,
+    #     verbose=True,
+    #     showplot=True,
+    #     saveplot=True,
+    # )
+    # # Prescribe analytical wind profiles and export results
+    # model.prescribe_profile(
+    #     outputPath=output_file_prescribe,
+    #     verbose=True,
+    #     showplot=True,
+    #     saveplot=True,
+    # )
     
 
 

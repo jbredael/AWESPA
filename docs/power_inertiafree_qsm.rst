@@ -70,9 +70,9 @@ An annotated example is shown below
    # ===== OPTIMIZATION =====
    optimization:
      wind_speeds:
-       cut_in: 6.0
+       cut_in: 3.0
        cut_out: 25.0
-       n_points: 20
+       n_points: 10
        fine_resolution:
          n_points_near_cutout: 0
          range_m_s: 2.0
@@ -81,30 +81,34 @@ An annotated example is shown below
        optimize_variables:
          reeling_speed_traction: true
          reeling_speed_retraction: true
-         fraction_tether_length_retraction_start: true
+         fraction_tether_length_traction_end: true
          fraction_tether_length_retraction_end: true
          elevation_angle_traction: true
+         elevation_angle_end_trans_rori: true
        opt_phase_timestep:
-         retraction: 2.5
-         transition: 0.05
+         retraction: 1.5
+         transition_riro: 0.05
          traction: 2.5
-       max_iterations: 200
-       ftol: 1.0e-3
-       eps: 1.0e-4
-       x0: [2, -2, 0.65, 1, 30.0]
-       scaling: [1, 1, 1, 1, 30]
+         transition_rori: 0.05
+       max_iterations: 50
+       ftol: 5.0e-2
+       eps: 5.0e-2
+       x0: [2, -2, 0.65, 0.9, 30.0, 50.0]
+       scaling: [1, 1, 1, 1, 30, 30]
 
      bounds:
-       reeling_speed_traction_min: 0.5
-       reeling_speed_traction_max: 6.0
-       reeling_speed_retraction_min: -8.0
-       reeling_speed_retraction_max: -0.5
-       fraction_tether_length_retraction_start_min: 0.8
-       fraction_tether_length_retraction_start_max: 1.0
+       reeling_speed_traction_min: 0.01
+       reeling_speed_traction_max: 15.0
+       reeling_speed_retraction_min: -15.0
+       reeling_speed_retraction_max: -0.01
+       fraction_tether_length_traction_end_min: 0.8
+       fraction_tether_length_traction_end_max: 0.95
        fraction_tether_length_retraction_end_min: 0.4
        fraction_tether_length_retraction_end_max: 0.8
-       elevation_angle_traction_min: 20.0
-       elevation_angle_traction_max: 50.0
+       elevation_angle_traction_min: 10.0
+       elevation_angle_traction_max: 60.0
+       elevation_angle_end_trans_rori_min: 30.0
+       elevation_angle_end_trans_rori_max: 80.0
 
      constraints:
        min_tether_length_fraction_difference: 0.1
@@ -114,10 +118,11 @@ An annotated example is shown below
    cycle:
      minimum_tether_force: 750.0
      minimum_height: 100.0
-     elevation_angle_traction: [30.0, 30.0, 30.0, 30.0, 30.0]
-     tether_length_start_retraction: 1
+     elevation_angle_traction: [30.0, 30.0, 30.0, 30.0]
+     tether_length_end_traction: 0.95
      tether_length_end_retraction: 0.65
      include_transition_energy: true
+     elevation_angle_end_trans_rori: 50.0
 
    # ===== PHASE SETTINGS =====
    retraction:
@@ -126,11 +131,17 @@ An annotated example is shown below
      azimuth_angle: 0.0
      course_angle: 180.0
 
-   transition:
+   transition_riro:
      control: ['reeling_speed', 0]
      time_step: 0.05
      azimuth_angle: 0.0
      course_angle: 0.0
+
+   transition_rori:
+     control: ['reeling_speed', 0]
+     time_step: 0.05
+     azimuth_angle: 0.0
+     course_angle: 180.0
 
    traction:
      control: ['reeling_speed', 2.0]

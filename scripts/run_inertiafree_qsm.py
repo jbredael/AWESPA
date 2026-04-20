@@ -39,24 +39,19 @@ def main():
         wind_resource_path=windResourcePath,
     )
 
-    # # ---- single wind speed test ------------------------------------------
-    # print("\n" + "=" * 60)
-    # print("SINGLE WIND SPEED TEST (direct)")
-    # print("=" * 60)
-    # power = model.calculate_power_at_wind_speed(
-    #     wind_speed=10.0,
-    #     method="direct",
-    #     cluster_id=1,
-    #     verbose=True,
-    # )
-
-    # ---- full power curve (direct simulation) ----------------------------
-    print("\n" + "=" * 60)
-    print("FULL POWER CURVE – DIRECT SIMULATION")
-    print("=" * 60)
-    data = model.compute_power_curves(
-        output_path=outputDirect,
+    # ---- single wind speed test ------------------------------------------
+    power = model.calculate_power_at_wind_speed(
+        wind_speed=10.0,
         method="direct",
+        cluster_id=1,
+        verbose=True,
+    )
+
+    # ---- full power curve ----------------------------
+    data = model.compute_power_curves(
+        cluster_ids=[1],
+        output_path=outputDirect,
+        method="optimization",
         verbose=True,
         showplot=True,
         saveplot=True,

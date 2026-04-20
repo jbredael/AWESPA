@@ -1,6 +1,6 @@
 # Simulation settings for Luchsinger power model.
 settings:
-  model: luchsinger_original      # Options: luchsinger_original, luchsinger_extended_const_lod_in
+  model: luchsinger_extended_const_lod_in      # Options: luchsinger_original, luchsinger_extended_const_lod_in
 
   cut_in_wind_speed_m_s: 4.0      # Cut-in wind speed [m/s]
   cut_out_wind_speed_m_s: 25.0    # Cut-out wind speed [m/s]
