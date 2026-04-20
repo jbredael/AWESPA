@@ -164,7 +164,6 @@ wind_model.cluster(
     verbose=True,
     showplot=False,
     saveplot=True,
-    plotpath=RESULTS / "plots",
 )
 
 # --- Step 2: Power curve generation ---
