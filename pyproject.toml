@@ -91,7 +91,7 @@ dependencies = [
   "netCDF4",
   "inertiafree-qsm @ git+https://github.com/jbredael/InertiaFree-QSM.git@6fc1f34",
   "power-luchsinger @ git+https://github.com/jbredael/LuchsingerPowerModel.git@2534a9c",
-  "wind-profile-clustering @ git+https://github.com/awegroup/wind-profile-clustering.git@61a6003",
+  "wind-profile-clustering @ git+https://github.com/awegroup/wind-profile-clustering.git@9a8916c",
   "awesio @ git+https://github.com/awegroup/awesIO.git"
 ]
 
